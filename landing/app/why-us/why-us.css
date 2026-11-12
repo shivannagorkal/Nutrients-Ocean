@@ -1,0 +1,500 @@
+/* ===================================================================
+   DEDICATED WHY US PAGE (/why-us) — MATERIAL DESIGN 3 INSPIRED UI
+   Uses existing M3 CSS tokens from app/globals.css
+   =================================================================== */
+
+.whypage-main {
+  padding-top: 80px;
+  min-height: 100vh;
+  background: var(--surface);
+}
+
+@media (max-width: 639.98px) {
+  .whypage-main {
+    padding-top: 64px;
+  }
+}
+
+/* M3 Tonal Header */
+.whypage-hero {
+  background: linear-gradient(180deg, var(--primary-container) 0%, var(--surface) 100%);
+  border-bottom: 1px solid var(--outline-variant);
+  padding: clamp(32px, 5vw, 56px) 0 clamp(28px, 4vw, 44px);
+}
+
+.whypage-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--on-surface-variant);
+  margin-bottom: 18px;
+}
+
+.whypage-breadcrumbs a {
+  color: var(--primary-deep);
+  font-weight: 500;
+}
+
+.whypage-breadcrumbs a:hover {
+  text-decoration: underline;
+}
+
+.whypage-breadcrumbs .current {
+  color: var(--on-surface);
+  font-weight: 600;
+}
+
+.whypage-hero-content {
+  max-width: 780px;
+}
+
+.whypage-hero-title {
+  font-size: clamp(2rem, 4.5vw, 3.25rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--on-surface);
+  margin: 14px 0 12px;
+}
+
+.whypage-hero-sub {
+  font-size: clamp(15.5px, 1.8vw, 18px);
+  color: var(--on-surface-variant);
+  line-height: 1.6;
+}
+
+.whypage-trust-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.whypage-trust-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: var(--shape-full);
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  color: var(--on-surface);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--elev-1);
+}
+
+.whypage-trust-pill svg {
+  color: var(--tertiary);
+  flex-shrink: 0;
+}
+
+/* Section Spacing & Headers */
+.whypage-section {
+  padding: clamp(40px, 5.5vw, 72px) 0;
+}
+
+.whypage-section-tonal {
+  background: var(--surface-low);
+  border-top: 1px solid rgba(192, 201, 192, 0.45);
+  border-bottom: 1px solid rgba(192, 201, 192, 0.45);
+}
+
+.whypage-sec-head {
+  text-align: center;
+  max-width: 660px;
+  margin: 0 auto clamp(28px, 4vw, 42px);
+}
+
+.whypage-sec-head h2 {
+  font-size: clamp(1.65rem, 3.6vw, 2.4rem);
+  font-weight: 700;
+  color: var(--on-surface);
+  letter-spacing: -0.02em;
+  margin: 12px 0 10px;
+}
+
+.whypage-sec-head p {
+  font-size: 16px;
+  color: var(--on-surface-variant);
+}
+
+/* Core Pillars */
+.whypage-pillars-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(16px, 2.5vw, 24px);
+}
+
+@media (min-width: 640px) {
+  .whypage-pillars-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .whypage-pillars-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.whypage-pillar-card {
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-lg);
+  padding: 24px;
+  box-shadow: var(--elev-1);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: transform 0.25s var(--ease), box-shadow 0.25s var(--ease), border-color 0.25s var(--ease);
+}
+
+.whypage-pillar-card:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--elev-3);
+  border-color: var(--primary);
+}
+
+.whypage-pillar-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 16px;
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 4px;
+}
+
+.whypage-pillar-card h3 {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+.whypage-pillar-card p {
+  font-size: 14.5px;
+  color: var(--on-surface-variant);
+  line-height: 1.6;
+}
+
+/* Comparison Card (Desktop Table + Mobile Cards) */
+.whypage-compare-desktop {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .whypage-compare-desktop {
+    display: block;
+    background: var(--surface-lowest);
+    border: 1px solid var(--outline-variant);
+    border-radius: var(--shape-xl);
+    overflow: hidden;
+    box-shadow: var(--elev-2);
+  }
+}
+
+.whypage-compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.whypage-compare-table th,
+.whypage-compare-table td {
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--outline-variant);
+  font-size: 14.5px;
+  vertical-align: top;
+}
+
+.whypage-compare-table tr:last-child td {
+  border-bottom: none;
+}
+
+.whypage-compare-table thead th {
+  font-family: var(--font-heading);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--on-surface);
+  background: var(--surface-mid);
+}
+
+.whypage-compare-table .col-us {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+  font-weight: 600;
+}
+
+.whypage-compare-table thead th.col-us {
+  background: var(--tertiary);
+  color: var(--on-tertiary);
+}
+
+.whypage-compare-aspect {
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+.whypage-us-cell {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.whypage-us-cell svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--tertiary);
+}
+
+/* Mobile Comparison Cards */
+.whypage-compare-mobile {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+@media (min-width: 768px) {
+  .whypage-compare-mobile {
+    display: none;
+  }
+}
+
+.whypage-compare-card {
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-lg);
+  padding: 18px;
+  box-shadow: var(--elev-1);
+}
+
+.whypage-compare-card h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--on-surface);
+  margin-bottom: 12px;
+}
+
+.whypage-compare-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.whypage-compare-row {
+  padding: 10px 12px;
+  border-radius: var(--shape-sm);
+  background: var(--surface-low);
+  font-size: 13.5px;
+  color: var(--on-surface-variant);
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.whypage-compare-row.is-us {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
+}
+
+.whypage-compare-row strong {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Workout Timing Fuel Guide */
+.whypage-timing-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(16px, 2.5vw, 24px);
+}
+
+@media (min-width: 900px) {
+  .whypage-timing-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.whypage-timing-card {
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-lg);
+  padding: 24px;
+  box-shadow: var(--elev-1);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.whypage-timing-tag {
+  display: inline-flex;
+  width: fit-content;
+  padding: 4px 12px;
+  border-radius: var(--shape-full);
+  background: var(--secondary-container);
+  color: var(--on-secondary-container);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.whypage-timing-card h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--on-surface);
+}
+
+.whypage-timing-pick {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--primary-deep);
+}
+
+.whypage-timing-desc {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--on-surface-variant);
+  flex-grow: 1;
+}
+
+.whypage-timing-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--tertiary);
+}
+
+.whypage-timing-link:hover {
+  text-decoration: underline;
+}
+
+.whypage-disclaimer-note {
+  text-align: center;
+  margin-top: 22px;
+  font-size: 13.5px;
+  color: var(--on-surface-variant);
+}
+
+.whypage-disclaimer-note a {
+  color: var(--primary-deep);
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+/* Standards & Promises */
+.whypage-standards-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+
+@media (min-width: 768px) {
+  .whypage-standards-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.whypage-standard-card {
+  background: var(--surface-lowest);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-lg);
+  padding: 22px;
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  box-shadow: var(--elev-1);
+}
+
+.whypage-standard-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--tertiary-container);
+  color: var(--on-tertiary-container);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.whypage-standard-card h3 {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--on-surface);
+  margin-bottom: 4px;
+}
+
+.whypage-standard-card p {
+  font-size: 14px;
+  color: var(--on-surface-variant);
+  line-height: 1.55;
+}
+
+.whypage-sublinks {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+/* Bottom CTA Card */
+.whypage-cta-card {
+  background: var(--primary-container);
+  border: 1px solid var(--outline-variant);
+  border-radius: var(--shape-xl);
+  padding: clamp(26px, 4vw, 42px);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+@media (min-width: 900px) {
+  .whypage-cta-card {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+.whypage-cta-copy {
+  max-width: 580px;
+}
+
+.whypage-cta-copy h2 {
+  font-size: clamp(22px, 3vw, 28px);
+  font-weight: 800;
+  color: var(--on-primary-container);
+  margin: 10px 0 8px;
+}
+
+.whypage-cta-copy p {
+  font-size: 15px;
+  color: var(--on-surface-variant);
+}
+
+.whypage-cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 479.98px) {
+  .whypage-cta-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .whypage-cta-actions .btn {
+    width: 100%;
+  }
+}
+
