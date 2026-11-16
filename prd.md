@@ -1,5 +1,5 @@
 # 🌊 Nutrients Ocean – Product Requirements Document (PRD)
-## Finance Management Dashboard V1
+## Customer Ordering, Subscriptions, QR Pass & Finance Operating System (V2)
 
 ---
 
@@ -8,36 +8,38 @@
 ### 1.1 Company Overview
 **Nutrients Ocean** is a food and nutrition business delivering performance smoothies, protein bowls, healthy meal prep, wellness beverages, and nutrition supplements. The business was officially established on **November 10, 2026**, operating under **INR (₹)** currency and the **Asia/Kolkata** timezone.
 
-The company is co-founded by **three equal partners (Founders)** who contribute capital investments, manage daily retail and kitchen operations, oversee inventory and ingredient procurement, and participate in profit distributions and business reinvestment.
+The business manages daily retail and kitchen operations, inventory and ingredient procurement, customer subscriptions, and business reinvestment.
 
 ### 1.2 Problem Statement
 Traditional food and beverage POS solutions and spreadsheet-based accounting tools suffer from critical gaps when applied to a fast-paced nutrition kitchen:
 1. **Finished vs. Raw Disconnect:** When a smoothie or bowl is sold, naive systems deduct the finished item from inventory rather than the underlying raw materials (whey protein, almond milk, peanut butter, frozen berries). This creates complete blind spots in stock levels, ingredient waste, and actual Cost of Goods Sold (COGS).
 2. **Payment Splitting & Reconciliations:** Customers frequently pay using a combination of Cash and UPI (e.g., PhonePe, Google Pay, Paytm). Without a real-time, double-entry cash ledger, daily cash drawer balances drift from bank statements.
 3. **Imprecise Partial Refunds:** Standard systems fail to attribute partial product returns back to the original sale items, leading to tax/discount rounding discrepancies and incorrect inventory re-stocking.
-4. **Partner Capital Ambiguity:** Without an integrated ledger tracking initial capital contributions, ongoing partner withdrawals, and earmarked business reinvestment reserves, founder equity accounting becomes disputable.
+4. **Capital & Reinvestment Blind Spots:** Without an integrated ledger tracking business capital injections and earmarked reinvestment reserves, cash allocation for equipment, bulk inventory, and expansion becomes unclear.
 
-### 1.3 Vision & Objectives (V1 Goals)
-The **Nutrients Ocean Finance Management Dashboard V1** is a purpose-built, audit-grade financial operating system designed to replace ad-hoc MongoDB collections and spreadsheets with a strictly normalized, transactionally sound PostgreSQL + Prisma architecture.
+### 1.3 Vision & Objectives (V2 Goals)
+The **Nutrients Ocean Platform V2** unifies three strictly separated applications over one audit-grade PostgreSQL + Prisma + Express backend (`Server/`):
+- **`client/`** *(renamed from `landing/`)*: Public customer storefront (no login required to browse) with on-demand **Firebase Phone OTP authentication**, online food ordering (**Razorpay + Pay at Stall**), **30-serving monthly subscriptions** (with unlimited freeze/skip-day flexibility), and a **60-second rotating daily QR pass**.
+- **`Admin/`**: Complete internal operations, QR counter scanner, and finance management portal (**Dashboard, Revenue, Expenses, Investments, Purchases, Inventory, Reinvestment, P&L Essential, Subscriptions, Advanced Analytics, and PDF/Excel Exports**).
+- **`Server/`**: Single authoritative API and transactional ledger enforcing integer paise precision, recipe BOM depletion, and zero mock/fake data.
 
 Key objectives:
 - **Zero-Loss Cash & UPI Accounting:** Every single rupee inflow and outflow is immutably recorded in integer paise (`BIGINT`), eliminating floating-point rounding errors.
 - **Recipe-Based Ingredient Depletion:** Real-time recipe execution deducts exact gram/milliliter quantities of raw ingredients upon sale and captures historical ingredient cost snapshots.
 - **Audit-Grade Partial & Full Refunds:** Mathematical allocation of discounts and taxes using the Hamilton-Hare Largest Remainder method with optional ingredient restock.
 - **Sequential Daily Closing:** Enforces day-by-day cash drawer and bank reconciliation with previous closing balance chaining and automated adjustment postings.
-- **Transparent Partner Capital Tracking:** Clear accounting for investments, profit distributions, and capital drawings across the three founding members.
+- **Transparent Investment & Reinvestment Tracking:** Clear accounting for business capital injections and earmarked growth reserves.
 
 ---
 
 ## 2. User Personas & Access Control
 
-The platform enforces Role-Based Access Control (RBAC) via the `admins` table, segmented into three roles:
+The platform enforces Role-Based Access Control (RBAC) via the `admins` table, segmented strictly into **two roles**:
 
 | Role | Persona | Key Responsibilities | Primary Permissions |
 | :--- | :--- | :--- | :--- |
-| **`SUPER_ADMIN`** | Founding Partner | Full operational, financial, and strategic control. | Access to all financial statements (P&L, Balance Sheet, Cash Flow), partner equity ledger, investment/withdrawal approvals, user administration, system configuration. |
-| **`ADMIN`** | Store Manager / Senior Accountant | Day-to-day store operations, procurement, and end-of-day reconciliation. | Register sales, log ingredient purchases, record operating expenses, initiate internal cash transfers, execute daily closings, process refunds. |
-| **`AUDITOR`** | External CA / Bookkeeper | Compliance review, financial auditing, and tax filing verification. | Read-only access to cash transactions, audit logs, sales registers, purchase invoices, and closing reports. No write/mutate permissions. |
+| **`SUPER_ADMIN`** | Business Owner | Full operational, financial, and strategic control. | Access to all financial statements (P&L, Cash Flow), investments & reinvestment approvals, analytics, PDF/Excel exports, user administration, and system configuration. |
+| **`ADMIN`** | Store Manager / Staff | Day-to-day store operations, QR redemption, procurement, and end-of-day reconciliation. | Scan customer QR passes, fulfill orders, register POS sales, log ingredient purchases, record operating expenses, initiate internal cash transfers, execute daily closings, and process refunds. |
 
 ---
 
@@ -61,11 +63,9 @@ The platform enforces Role-Based Access Control (RBAC) via the `admins` table, s
 - **Business Profile:** Root organization model (`businesses`) capturing `Nutrients Ocean`, start date `2026-11-10`, currency `INR`, and timezone `Asia/Kolkata`.
 - **Audit Logging:** Every financial mutation, sale void, and manual adjustment logs an entry in `audit_logs` detailing table name, record ID, admin ID, IP address, timestamp, and JSON before/after state diffs.
 
-### 4.2 Member Capital & Partner Equity Management
-- **Founders Registry:** Manages the three founding partners with equity allocation percentage (default 33.33% each).
-- **Capital Investments:** Tracks initial capital contributions and subsequent injections, linking directly to cash accounts (`PHYSICAL_CASH`, `UPI_DIGITAL`, `BANK_CURRENT`) with `INVESTMENT_INFLOW` ledger postings.
-- **Partner Withdrawals:** Records drawings categorized as either `PROFIT_DISTRIBUTION` or `CAPITAL_DRAWING`, enforcing partner approvals and generating `WITHDRAWAL_OUTFLOW` ledger entries.
-- **Reinvestment Allocations:** Allows reserving profits for business growth (`EQUIPMENT_EXPANSION`, `MARKETING_RESERVE`, `BULK_INVENTORY_RESERVE`, `EMERGENCY_RESERVE`, `NEW_BRANCH_CAPEX`), locking funds from distributor payouts.
+### 4.2 Business Investments & Reinvestment Management
+- **Capital Investments:** Tracks initial capital contributions and subsequent injections into the business, linking directly to cash accounts (`PHYSICAL_CASH`, `UPI_DIGITAL`, `BANK_CURRENT`) with `INVESTMENT_INFLOW` ledger postings.
+- **Reinvestment Allocations:** Allows reserving profits for business growth (`EQUIPMENT_EXPANSION`, `MARKETING_RESERVE`, `BULK_INVENTORY_RESERVE`, `EMERGENCY_RESERVE`, `NEW_BRANCH_CAPEX`), locking earmarked funds inside business reserves.
 
 ### 4.3 Product Catalog & Recipe Engine
 - **Product Categorization:** Supports four distinct product types:
@@ -160,8 +160,8 @@ The platform enforces Role-Based Access Control (RBAC) via the `admins` table, s
   - Visualizes contribution margin and highlights ingredients driving cost spikes.
 - **Daily Cash Flow Statement:**
   - Inflows vs. Outflows across Physical Cash, UPI, and Bank channels.
-- **Partner Equity & Capital Accounts:**
-  - Initial capital contributed, ongoing drawings, allocated net profit share (33.33% each), and net capital balance per founder.
+- **Investments & Reinvestment Summary:**
+  - Total capital injected into the business, earmarked reinvestment reserves, and retained business cash position.
 
 ---
 
@@ -185,13 +185,16 @@ The platform enforces Role-Based Access Control (RBAC) via the `admins` table, s
 
 ---
 
-## 6. V1 Scope vs. Future Roadmap
+## 6. V2 Scope & Full Platform Feature Matrix
 
-| Feature Area | In-Scope for V1 | Deferred to V2 (Future Roadmap) |
+| Module / Area | Workspace | Implemented Scope |
 | :--- | :--- | :--- |
-| **Point of Sale** | Single-store counter POS, cash & UPI split, instant receipt. | Multi-store chaining, customer loyalty points, table QR ordering. |
-| **Inventory** | Recipe ingredient deduction, Moving Average Cost, manual adjustments. | Automated purchase order generation based on reorder points, batch/lot expiry tracking. |
-| **Refunds** | Partial/full item refunds, Hamilton-Hare discount allocation, restock. | Credit notes / store wallet credits. |
-| **Accounting** | Double-entry cash ledger, daily closings, P&L, balance checks. | Automated GST-1/3B tax return filing, integration with Tally/Zoho Books. |
-| **Payments** | Manual recording of cash & UPI receipts, account reconciliation. | Direct payment gateway webhooks (Razorpay POS / Pine Labs machine sync). |
-| **Founders** | 3-member equity tracking, capital injections, drawings, reinvestments. | Dynamic equity vesting schedules, dividend withholding tax calculation. |
+| **Public Storefront** | `client/` | Public home, `/menu`, `/why-us`, `/app`, legal pages — **no login required to browse**. |
+| **Customer Auth** | `client/` + `Server/` | On-demand **Firebase Phone OTP** triggered only at checkout, subscription purchase, or `/account` & `/pass`. Verified server-side via `firebase-admin` -> HTTP-only `CUSTOMER` JWT cookie (`aud: "customer"`). |
+| **Online Food Ordering** | `client/` + `Server/` | Single items (`Normal Sandwich`, `Dry Fruit Sandwich`, `High Protein Oats`, `Nightout Oats` + Strawberry/Chocolate flavors), Morning (6–8 AM) / Evening (5–8 PM) slot, Stall Pickup (Free) or 2 KM Delivery (`₹5 / ₹10 / ₹15`). Supports **Razorpay** and **Pay at Stall**. |
+| **Monthly Subscriptions & Unlimited Freeze** | `client/` + `Server/` | **30-serving plans** (Individual ₹1,199–₹2,699 & Combo ₹2,999–₹3,999) paid via **Razorpay**. Strictly **1 serving per day**, with **unlimited freeze/skip days** (no max expiry cap — user collects all 30 items whenever they come). |
+| **Daily-Updating QR Pass & Counter Scanner** | `client/` + `Admin/` + `Server/` | **Option 1:** Customer `/pass` displays an HMAC-SHA256 QR rotating every **60s** + daily (IST). Staff scans via `Admin/` `/scan` camera scanner inside a `Serializable` DB lock (`@@unique([subscriptionId, redemptionDate])`), deducting recipe ingredients automatically. |
+| **Admin Dashboard & Revenue** | `Admin/` + `Server/` | Live KPIs (gross/net revenue, net profit, Cash/UPI/Bank balances, active subscribers, prep forecast), POS Cash/UPI/Split sales, online Razorpay orders, subscription revenues, Hamilton-Hare partial/full refunds. |
+| **Admin Expenses, Purchases & Inventory** | `Admin/` + `Server/` | Categorized expenses + multi-instalment payments, vendor purchases with Moving Average Cost (MAC), `FINISHED_PRODUCT`/`RAW_INGREDIENT`/`RETAIL_READY`/`PACKAGING` stock, Recipe BOM studio, wastage/count adjustments. |
+| **Admin Investments, Reinvestment & P&L Essential** | `Admin/` + `Server/` | Business capital injections (`INVESTMENT_INFLOW`), earmarked reserves (`EQUIPMENT_EXPANSION`, `MARKETING_RESERVE`, `BULK_INVENTORY_RESERVE`, `EMERGENCY_RESERVE`, `NEW_BRANCH_CAPEX`), live P&L statement, Cash Flow, and Sequential Daily Closing. |
+| **Admin Subscriptions, Advanced Analytics & Exports** | `Admin/` + `Server/` | Subscriber directory, daily redemption logs, freeze/kitchen prep forecast, margin & ingredient cost-spike analytics, slot/fulfillment analytics, and **server-verified PDF & Excel (`.xlsx`) exports** across all financial and operational reports. |

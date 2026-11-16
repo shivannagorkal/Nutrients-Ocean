@@ -74,7 +74,7 @@ All API communication must use HTTPS. Plain HTTP requests are redirected or reje
 #### Request Body
 ```json
 {
-  "email": "partner1@nutrientsocean.com",
+  "email": "owner@nutrientsocean.com",
   "password": "SecurePassword123!"
 }
 ```
@@ -91,7 +91,7 @@ All API communication must use HTTPS. Plain HTTP requests are redirected or reje
     "admin": {
       "id": "11111111-1111-1111-1111-111111111111",
       "businessId": "00000000-0000-0000-0000-000000000001",
-      "email": "partner1@nutrientsocean.com",
+      "email": "owner@nutrientsocean.com",
       "fullName": "Aryan Sharma",
       "role": "SUPER_ADMIN"
     },
@@ -110,86 +110,48 @@ All API communication must use HTTPS. Plain HTTP requests are redirected or reje
 
 ### 2.2 Get Authenticated Profile
 - **Endpoint:** `GET /auth/me`
-- **Access:** `SUPER_ADMIN`, `ADMIN`, `AUDITOR`
+- **Access:** `SUPER_ADMIN`, `ADMIN`
 - **Response (200 OK):** Returns logged-in admin data, business configuration, and active cash drawer assignment.
 
 ---
 
-## 3. Founding Members & Capital Equity
+## 3. Business Investments & Reinvestment Reserves
 
-### 3.1 List Founding Members
-- **Endpoint:** `GET /members`
-- **Access:** `SUPER_ADMIN`, `ADMIN`, `AUDITOR`
-- **Response (200 OK):**
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "id": "22222222-2222-2222-2222-222222222221",
-      "name": "Aryan Sharma",
-      "role": "FOUNDER",
-      "equityPercentage": "33.34",
-      "totalInvestedPaise": 50000000,
-      "totalWithdrawnPaise": 5000000,
-      "netCapitalBalancePaise": 45000000
-    },
-    {
-      "id": "22222222-2222-2222-2222-222222222222",
-      "name": "Rohan Patel",
-      "role": "FOUNDER",
-      "equityPercentage": "33.33",
-      "totalInvestedPaise": 50000000,
-      "totalWithdrawnPaise": 5000000,
-      "netCapitalBalancePaise": 45000000
-    },
-    {
-      "id": "22222222-2222-2222-2222-222222222223",
-      "name": "Sameer Joshi",
-      "role": "FOUNDER",
-      "equityPercentage": "33.33",
-      "totalInvestedPaise": 50000000,
-      "totalWithdrawnPaise": 5000000,
-      "netCapitalBalancePaise": 45000000
-    }
-  ]
-}
-```
+### 3.1 List Business Investments
+- **Endpoint:** `GET /investments`
+- **Access:** `SUPER_ADMIN`, `ADMIN`
+- **Description:** Lists all business capital injections linked to cash/bank accounts.
 
-### 3.2 Record Capital Investment
+### 3.2 Record Business Capital Investment
 - **Endpoint:** `POST /investments`
 - **Access:** `SUPER_ADMIN`
-- **Description:** Records an initial or additional capital injection by a founder, creating a corresponding `INVESTMENT_INFLOW` cash transaction.
+- **Description:** Records an initial or additional capital injection into the business, creating a corresponding `INVESTMENT_INFLOW` cash transaction.
 
 #### Request Body
 ```json
 {
-  "memberId": "22222222-2222-2222-2222-222222222221",
-  "cashAccountId": "10000000-0000-0000-0000-000000000003",
+  "cashAccountId": "10000000-0000-0000-0000-000000000002",
   "investmentType": "ADDITIONAL_CAPITAL",
   "amountPaise": 10000000,
   "date": "2026-11-11",
-  "paymentMode": "BANK_TRANSFER",
-  "referenceNumber": "HDFC-NEFT-9912048",
+  "paymentMode": "UPI",
+  "referenceNumber": "UPI-REF-9912048",
   "notes": "Expansion fund infusion"
 }
 ```
 
-### 3.3 Record Partner Withdrawal
-- **Endpoint:** `POST /withdrawals`
+### 3.3 Record Business Reinvestment Allocation
+- **Endpoint:** `POST /reinvestments`
 - **Access:** `SUPER_ADMIN`
-- **Description:** Records a profit distribution or capital drawing with automatic double-entry outflow.
+- **Description:** Allocates retained earnings to an earmarked business reserve (`EQUIPMENT_EXPANSION`, `MARKETING_RESERVE`, `BULK_INVENTORY_RESERVE`, `EMERGENCY_RESERVE`, `NEW_BRANCH_CAPEX`).
 
 #### Request Body
 ```json
 {
-  "memberId": "22222222-2222-2222-2222-222222222222",
-  "cashAccountId": "10000000-0000-0000-0000-000000000003",
-  "withdrawalType": "PROFIT_DISTRIBUTION",
+  "reserveCategory": "EQUIPMENT_EXPANSION",
   "amountPaise": 2500000,
   "date": "2026-11-11",
-  "paymentMode": "BANK_TRANSFER",
-  "notes": "Month 1 preliminary profit dividend"
+  "notes": "Blender and cold-storage upgrade reserve"
 }
 ```
 
@@ -459,11 +421,11 @@ All API communication must use HTTPS. Plain HTTP requests are redirected or reje
 #### Request Body
 ```json
 {
-  "cashAccountId": "10000000-0000-0000-0000-000000000003",
+  "cashAccountId": "10000000-0000-0000-0000-000000000002",
   "amountPaise": 2000000,
   "paymentDate": "2026-11-11",
-  "paymentMode": "BANK_TRANSFER",
-  "referenceNumber": "HDFC-RTGS-002194",
+  "paymentMode": "UPI",
+  "referenceNumber": "UPI-REF-002194",
   "notes": "First tranche 50% payment"
 }
 ```
@@ -486,22 +448,15 @@ All API communication must use HTTPS. Plain HTTP requests are redirected or reje
       "id": "10000000-0000-0000-0000-000000000001",
       "accountName": "Counter Cash Drawer",
       "accountType": "PHYSICAL_CASH",
-      "openingBalancePaise": 1000000,
-      "currentBalancePaise": 2450000
+      "openingBalancePaise": 0,
+      "currentBalancePaise": 0
     },
     {
       "id": "10000000-0000-0000-0000-000000000002",
-      "accountName": "PhonePe Merchant UPI",
+      "accountName": "UPI / Online",
       "accountType": "UPI_DIGITAL",
       "openingBalancePaise": 0,
-      "currentBalancePaise": 8920000
-    },
-    {
-      "id": "10000000-0000-0000-0000-000000000003",
-      "accountName": "HDFC Current Account",
-      "accountType": "BANK_CURRENT",
-      "openingBalancePaise": 150000000,
-      "currentBalancePaise": 142050000
+      "currentBalancePaise": 0
     }
   ]
 }
@@ -516,10 +471,10 @@ All API communication must use HTTPS. Plain HTTP requests are redirected or reje
 ```json
 {
   "sourceCashAccountId": "10000000-0000-0000-0000-000000000001",
-  "destCashAccountId": "10000000-0000-0000-0000-000000000003",
+  "destCashAccountId": "10000000-0000-0000-0000-000000000002",
   "amountPaise": 1500000,
   "transferDate": "2026-11-11",
-  "notes": "Daily physical cash deposit to HDFC Bank"
+  "notes": "Transfer physical cash to UPI/Online settlement account"
 }
 ```
 
@@ -534,9 +489,9 @@ All API communication must use HTTPS. Plain HTTP requests are redirected or reje
     "transferNumber": "TXF-20261111-0002",
     "amountPaise": 1500000,
     "sourceAccount": "Counter Cash Drawer",
-    "destAccount": "HDFC Current Account",
-    "sourceBalanceAfterPaise": 950000,
-    "destBalanceAfterPaise": 143550000
+    "destAccount": "UPI / Online",
+    "sourceBalanceAfterPaise": 0,
+    "destBalanceAfterPaise": 1500000
   }
 }
 ```
@@ -644,7 +599,7 @@ All API communication must use HTTPS. Plain HTTP requests are redirected or reje
 
 ### 10.1 Live Profit & Loss (P&L) Statement
 - **Endpoint:** `GET /reports/pnl`
-- **Access:** `SUPER_ADMIN`, `ADMIN`, `AUDITOR`
+- **Access:** `SUPER_ADMIN`, `ADMIN`
 - **Query Params:** `startDate=2026-11-10&endDate=2026-11-11`
 
 #### Response (200 OK)
@@ -685,14 +640,13 @@ All API communication must use HTTPS. Plain HTTP requests are redirected or reje
 
 ### 10.2 Menu Product Margin Breakdown
 - **Endpoint:** `GET /reports/product-margins`
-- **Access:** `SUPER_ADMIN`, `ADMIN`, `AUDITOR`
+- **Access:** `SUPER_ADMIN`, `ADMIN`
 - **Description:** Returns selling price, recipe ingredient BOM cost, contribution margin, and margin percentage for every sellable menu item.
 
-### 10.3 Partner Equity & Capital Position
-- **Endpoint:** `GET /reports/partner-equity`
+### 10.3 Business Capital & Reinvestment Summary
+- **Endpoint:** `GET /reports/capital-summary`
 - **Access:** `SUPER_ADMIN`
-- **Description:** Computes each founder's net capital balance:
-  $$\text{Net Balance} = \text{Initial Investment} + \text{Additional Investments} + \text{Share of Net Profit} - \text{Total Withdrawals}$$
+- **Description:** Returns total business investments injected, earmarked reinvestment reserves by category, and net retained business cash position.
 
 ---
 
@@ -711,3 +665,103 @@ All API communication must use HTTPS. Plain HTTP requests are redirected or reje
 | `SAME_ACCOUNT_TRANSFER` | 400 | Source and destination transfer accounts are identical. | Show "Source and destination accounts must be distinct". |
 | `SKIPPED_CLOSING_DATE` | 409 | Attempting to close Day $T$ while Day $T-1$ remains unclosed. | Redirect user to close Day $T-1$ first. |
 | `IDEMPOTENCY_CONFLICT` | 409 | Request with identical `Idempotency-Key` is already processed. | Display cached transaction confirmation. |
+
+
+---
+
+## 12. Customer Authentication (On-Demand Firebase Phone OTP)
+
+### 12.1 Exchange Firebase ID Token for HTTP-Only Session
+- **Endpoint:** `POST /auth/customer/firebase`
+- **Access:** Public (called only when user checks out, subscribes, or opens `/account` / `/pass`)
+- **Description:** Verifies Firebase Phone Auth `idToken` via `firebase-admin`, upserts customer record by `(businessId, phone)`, and sets HTTP-only `customerAccessToken` + `customerRefreshToken` cookies (`aud: "customer"`).
+
+### 12.2 Refresh & Profile Endpoints
+- `POST /auth/customer/refresh`: Rotates customer access token cookie.
+- `POST /auth/customer/logout`: Clears customer session cookies.
+- `GET /auth/customer/me`: Returns authenticated customer profile & saved delivery address (`aud: "customer"`).
+- `PATCH /auth/customer/me`: Updates `fullName` and `defaultAddress`.
+
+---
+
+## 13. Public Catalog & Customer Ordering (Razorpay + Pay at Stall)
+
+### 13.1 Public Catalog
+- **Endpoint:** `GET /catalog`
+- **Access:** Public (no authentication required)
+- **Description:** Returns live sellable menu items, available flavors (`Strawberry`, `Chocolate`), 30-serving Individual/Combo subscription plans, and 2 KM delivery fee tiers from PostgreSQL.
+
+### 13.2 Create Single-Item Order
+- **Endpoint:** `POST /customer/orders`
+- **Access:** Customer (`aud: "customer"`)
+- **Header:** `Idempotency-Key: <uuid>`
+- **Body:** `{ items: [{ productId, flavor?, quantity }], scheduledDate, collectionSlot: "MORNING" | "EVENING", fulfillmentType: "PICKUP" | "DELIVERY", deliveryBracket, deliveryAddress?, paymentMethod: "RAZORPAY" | "PAY_AT_STALL" }`
+- **Behavior:** Server computes exact integer paise totals. If `RAZORPAY`, returns Razorpay order parameters; if `PAY_AT_STALL`, marks order `PLACED` (`paymentStatus: "PENDING"`) ready for counter pickup & payment.
+
+### 13.3 Razorpay Verification & Webhook
+- `POST /payments/razorpay/verify`: Verifies HMAC signature (`razorpay_order_id + "|" + razorpay_payment_id`) in a `Serializable` transaction, marks order/subscription active, and posts `CREDIT` to `cash_transactions` (`UPI_DIGITAL`).
+- `POST /webhooks/razorpay`: Verifies raw-body `X-Razorpay-Signature` (`payment.captured`) idempotently.
+
+---
+
+## 14. 30-Serving Monthly Subscriptions & Unlimited Freeze
+
+### 14.1 Create Monthly Subscription Order
+- **Endpoint:** `POST /customer/subscriptions`
+- **Access:** Customer (`aud: "customer"`)
+- **Header:** `Idempotency-Key: <uuid>`
+- **Body:** `{ planId, flavor?, collectionSlot, fulfillmentType, deliveryBracket, deliveryAddress? }`
+- **Behavior:** Initiates Razorpay checkout; upon verified payment capture, activates `customer_subscriptions` with `totalServings = 30`, `usedServings = 0`, and no expiry date cap.
+
+### 14.2 Get My Subscriptions & History
+- **Endpoint:** `GET /customer/subscriptions/me`
+- **Access:** Customer (`aud: "customer"`)
+- **Description:** Returns active/completed subscriptions, `usedServings`, `remainingServings`, upcoming `subscription_freezes` dates, and `daily_redemptions` history.
+
+### 14.3 Schedule or Remove Freeze Days (Unlimited Skip Support)
+- `POST /customer/subscriptions/:id/freeze`: Body `{ dates: ["YYYY-MM-DD", ...] }` (supports single days or multi-day/week ranges before slot cutoff; no max freeze-day limit).
+- `DELETE /customer/subscriptions/:id/freeze`: Body `{ dates: ["YYYY-MM-DD", ...] }` to unfreeze upcoming dates prior to slot cutoff.
+
+---
+
+## 15. Option 1 Daily-Updating QR Pass & Admin Counter Scanner
+
+### 15.1 Issue Rotating 60-Second Customer QR Pass
+- **Endpoint:** `GET /customer/qr-pass`
+- **Access:** Customer (`aud: "customer"`)
+- **Description:** Checks today's IST status for active subscriptions and paid/ready single orders. Returns `{ status: "READY" | "FROZEN_TODAY" | "ALREADY_COLLECTED", qrPayload, qrDataUrl, expiresAt, collectionSlot, itemSummary }` where `qrPayload` is signed with `QR_HMAC_SECRET` and rotates every **60 seconds** + daily at midnight IST.
+
+### 15.2 Staff Counter QR Redemption
+- **Endpoint:** `POST /admin/qr/redeem`
+- **Access:** `SUPER_ADMIN`, `ADMIN` (`aud: "admin"`)
+- **Body:** `{ qrPayload, payAtStallMode?: "CASH" | "UPI" }`
+- **Behavior:** Inside a `Serializable` transaction:
+  1. Validates HMAC signature (`crypto.timingSafeEqual`), `date === todayIST`, and 60s window freshness.
+  2. For subscriptions: enforces `@@unique([subscriptionId, redemptionDate])`, rejects if frozen today, increments `usedServings`, marks `COMPLETED` at `30/30`, and deducts recipe raw ingredients from `inventory`.
+  3. For single orders: transitions `orderStatus` to `COLLECTED`, records `PAY_AT_STALL` payment into `cash_transactions` if unpaid, and executes recipe BOM inventory deduction.
+
+### 15.3 Admin Order & Kitchen Prep Management
+- `GET /admin/orders`: Filterable live order queue by date & `MORNING | EVENING` slot.
+- `PATCH /admin/orders/:id/status`: Update `PLACED` → `PREPARING` → `READY` → `COLLECTED` / `CANCELLED`.
+- `GET /admin/subscriptions`: Full subscriber directory, remaining servings, freeze dates, and daily kitchen prep headcount.
+
+---
+
+## 16. Admin Advanced Analytics & PDF / Excel Exports
+
+### 16.1 Advanced Analytics
+- **Endpoint:** `GET /admin/analytics/overview`
+- **Access:** `SUPER_ADMIN`, `ADMIN`
+- **Query Params:** `startDate`, `endDate`
+- **Response Data:** Daily revenue & gross profit time-series, recipe contribution margin rankings, ingredient MAC cost-spike alerts, subscriber completion/redemption & freeze trends, `MORNING` vs. `EVENING` slot volume, and `PICKUP` vs. `2 KM DELIVERY` split.
+
+### 16.2 Server-Generated PDF & Excel (`.xlsx`) Exports
+- **Access:** `SUPER_ADMIN`, `ADMIN`
+- **Query Params:** `startDate`, `endDate`, `format=pdf|xlsx`
+- **Endpoints:**
+  - `GET /admin/exports/pnl` — P&L statement workbook / formatted PDF
+  - `GET /admin/exports/revenue` — POS + Razorpay + Subscription revenue register
+  - `GET /admin/exports/expenses` — Categorized expenses & payment status
+  - `GET /admin/exports/purchases` — Vendor stock purchases & MAC valuation
+  - `GET /admin/exports/inventory` — Live stock valuation & movement audit
+  - `GET /admin/exports/subscriptions` — 30-serving member balances, freeze dates & daily QR redemption log

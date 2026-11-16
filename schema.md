@@ -9,7 +9,7 @@
 - **The Issue:** In Prisma, an optional relation cannot use a composite foreign key where one field is non-null (`businessId: String`) while the related foreign keys (`saleId: String?`, `paymentId: String?`, etc.) are nullable. Prisma throws error `P1012: In a relation, all fields must be optional if any field is optional`.
 - **The Resolution:**
   1. In Prisma `schema.prisma`: mapped optional ledger links to single-column relations (`fields: [saleId], references: [id]`, `fields: [transferId], references: [id]`, etc.).
-  2. In PostgreSQL: Added `fn_enforce_cash_tx_business_isolation()` trigger to verify that whenever `sale_id`, `payment_id`, `refund_id`, `investment_id`, `withdrawal_id`, `reinvestment_allocation_id`, `transfer_id`, or `daily_closing_id` is set, the target record strictly matches `NEW.business_id`. Cross-business data access is rejected at the database level.
+  2. In PostgreSQL: Added `fn_enforce_cash_tx_business_isolation()` trigger to verify that whenever `sale_id`, `payment_id`, `refund_id`, `investment_id`, `reinvestment_allocation_id`, `transfer_id`, or `daily_closing_id` is set, the target record strictly matches `NEW.business_id`. Cross-business data access is rejected at the database level.
   3. Added `@@unique([businessId, productId])` on `Recipe` and `Inventory` to satisfy Prisma 1-to-1 relation uniqueness requirements.
 
 ### Blocker 2: PostgreSQL Combined INSERT/UPDATE/DELETE Trigger
@@ -49,11 +49,6 @@ BEGIN
     IF NEW.investment_id IS NOT NULL THEN
         IF NOT EXISTS (SELECT 1 FROM investments WHERE id = NEW.investment_id AND business_id = NEW.business_id) THEN
             RAISE EXCEPTION 'Cross-business violation: Investment % does not belong to business %', NEW.investment_id, NEW.business_id;
-        END IF;
-    END IF;
-    IF NEW.withdrawal_id IS NOT NULL THEN
-        IF NOT EXISTS (SELECT 1 FROM withdrawals WHERE id = NEW.withdrawal_id AND business_id = NEW.business_id) THEN
-            RAISE EXCEPTION 'Cross-business violation: Withdrawal % does not belong to business %', NEW.withdrawal_id, NEW.business_id;
         END IF;
     END IF;
     IF NEW.reinvestment_allocation_id IS NOT NULL THEN
@@ -171,7 +166,7 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// [All Enums unchanged: AdminRole, ProductType, BaseUnit, PaymentMode, PaymentStatus, etc.]
+// [Enums: AdminRole (SUPER_ADMIN, ADMIN only — no AUDITOR role), ProductType, BaseUnit, PaymentMode, PaymentStatus, etc.]
 
 model Recipe {
   id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
@@ -234,7 +229,6 @@ model CashTransaction {
   paymentId                 String?                 @unique @map("payment_id") @db.Uuid
   refundId                  String?                 @unique @map("refund_id") @db.Uuid
   investmentId              String?                 @unique @map("investment_id") @db.Uuid
-  withdrawalId              String?                 @unique @map("withdrawal_id") @db.Uuid
   reinvestmentAllocationId  String?                 @unique @map("reinvestment_allocation_id") @db.Uuid
   dailyClosingId            String?                 @map("daily_closing_id") @db.Uuid
   transferId                String?                 @map("transfer_id") @db.Uuid
@@ -246,7 +240,6 @@ model CashTransaction {
   payment                   Payment?                @relation(fields: [paymentId], references: [id], onDelete: Restrict)
   refund                    Refund?                 @relation(fields: [refundId], references: [id], onDelete: Restrict)
   investment                Investment?             @relation(fields: [investmentId], references: [id], onDelete: Restrict)
-  withdrawal                Withdrawal?             @relation(fields: [withdrawalId], references: [id], onDelete: Restrict)
   reinvestmentAllocation    ReinvestmentAllocation? @relation(fields: [reinvestmentAllocationId], references: [id], onDelete: Restrict)
   dailyClosing              DailyClosing?           @relation(fields: [dailyClosingId], references: [id], onDelete: Restrict)
   transfer                  CashTransfer?           @relation(fields: [transferId], references: [id], onDelete: Restrict)
@@ -328,4 +321,227 @@ Prisma schema loaded from schema.prisma
 ==================================================================
   FINAL TEST SUMMARY: 12 / 12 TESTS PASSED (100% SUCCESS)  
 ==================================================================
+```
+
+
+---
+
+## 5. V2 Customer Ordering, 30-Serving Unlimited-Freeze Subscriptions & Daily QR Schema Extensions
+
+The following normalized Prisma models extend the core finance database (`businesses`, `products`, `sales`, `cash_transactions`) to power `client/` ordering, Firebase Phone OTP authentication, Razorpay + Pay at Stall payments, unlimited-freeze 30-serving subscriptions, and Option 1 anti-screenshot QR redemptions.
+
+```prisma
+enum CollectionSlot {
+  MORNING
+  EVENING
+}
+
+enum FulfillmentType {
+  PICKUP
+  DELIVERY
+}
+
+enum DeliveryBracket {
+  NONE
+  M0_500
+  M501_1000
+  M1001_2000
+}
+
+enum CustomerPaymentMethod {
+  RAZORPAY
+  PAY_AT_STALL
+}
+
+enum OnlinePaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum CustomerOrderStatus {
+  PLACED
+  PREPARING
+  READY
+  COLLECTED
+  CANCELLED
+}
+
+enum SubscriptionType {
+  INDIVIDUAL
+  COMBO
+}
+
+enum SubscriptionStatus {
+  PENDING_PAYMENT
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+model Customer {
+  id             String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId     String                 @map("business_id") @db.Uuid
+  firebaseUid    String                 @unique @map("firebase_uid") @db.VarChar(128)
+  phone          String                 @db.VarChar(20)
+  fullName       String?                @map("full_name") @db.VarChar(120)
+  defaultAddress String?                @map("default_address") @db.Text
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime               @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  business       Business               @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  orders         CustomerOrder[]
+  subscriptions  CustomerSubscription[]
+
+  @@unique([businessId, id], map: "uq_customers_business_id")
+  @@unique([businessId, phone], map: "uq_customers_business_phone")
+  @@map("customers")
+}
+
+model SubscriptionPlan {
+  id                  String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId          String                 @map("business_id") @db.Uuid
+  code                String                 @db.VarChar(60)
+  name                String                 @db.VarChar(150)
+  planType            SubscriptionType       @map("plan_type")
+  totalServings       Int                    @default(30) @map("total_servings")
+  pricePaise          BigInt                 @map("price_paise")
+  originalPricePaise  BigInt?                @map("original_price_paise")
+  primaryProductId    String                 @map("primary_product_id") @db.Uuid
+  secondaryProductId  String?                @map("secondary_product_id") @db.Uuid
+  isActive            Boolean                @default(true) @map("is_active")
+  createdAt           DateTime               @default(now()) @map("created_at") @db.Timestamptz
+
+  business            Business               @relation(fields: [businessId], references: [id], onDelete: Restrict)
+  subscriptions       CustomerSubscription[]
+
+  @@unique([businessId, id], map: "uq_sub_plans_business_id")
+  @@unique([businessId, code], map: "uq_sub_plans_business_code")
+  @@map("subscription_plans")
+}
+
+model CustomerOrder {
+  id                String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId        String                 @map("business_id") @db.Uuid
+  customerId        String                 @map("customer_id") @db.Uuid
+  orderNumber       String                 @map("order_number") @db.VarChar(40)
+  scheduledDate     DateTime               @map("scheduled_date") @db.Date
+  collectionSlot    CollectionSlot         @map("collection_slot")
+  fulfillmentType   FulfillmentType        @map("fulfillment_type")
+  deliveryBracket   DeliveryBracket        @default(NONE) @map("delivery_bracket")
+  deliveryAddress   String?                @map("delivery_address") @db.Text
+  subtotalPaise     BigInt                 @map("subtotal_paise")
+  deliveryFeePaise  BigInt                 @default(0) @map("delivery_fee_paise")
+  totalPaise        BigInt                 @map("total_paise")
+  paymentMethod     CustomerPaymentMethod  @map("payment_method")
+  paymentStatus     OnlinePaymentStatus    @default(PENDING) @map("payment_status")
+  orderStatus       CustomerOrderStatus    @default(PLACED) @map("order_status")
+  linkedSaleId      String?                @unique @map("linked_sale_id") @db.Uuid
+  collectedAt       DateTime?              @map("collected_at") @db.Timestamptz
+  createdAt         DateTime               @default(now()) @map("created_at") @db.Timestamptz
+
+  customer          Customer               @relation(fields: [businessId, customerId], references: [businessId, id], onDelete: Restrict)
+  items             CustomerOrderItem[]
+  paymentTx         PaymentTransaction[]
+
+  @@unique([businessId, id], map: "uq_customer_orders_business_id")
+  @@unique([businessId, orderNumber], map: "uq_customer_orders_number")
+  @@index([businessId, scheduledDate, collectionSlot], map: "idx_customer_orders_schedule")
+  @@map("customer_orders")
+}
+
+model CustomerOrderItem {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId      String        @map("business_id") @db.Uuid
+  orderId         String        @map("order_id") @db.Uuid
+  productId       String        @map("product_id") @db.Uuid
+  itemName        String        @map("item_name") @db.VarChar(150)
+  flavor          String?       @db.VarChar(40)
+  quantity        Int
+  unitPricePaise  BigInt        @map("unit_price_paise")
+  lineTotalPaise  BigInt        @map("line_total_paise")
+
+  order           CustomerOrder @relation(fields: [businessId, orderId], references: [businessId, id], onDelete: Cascade)
+
+  @@map("customer_order_items")
+}
+
+model CustomerSubscription {
+  id                String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId        String               @map("business_id") @db.Uuid
+  customerId        String               @map("customer_id") @db.Uuid
+  planId            String               @map("plan_id") @db.Uuid
+  flavor            String?              @db.VarChar(40)
+  collectionSlot    CollectionSlot       @map("collection_slot")
+  fulfillmentType   FulfillmentType      @map("fulfillment_type")
+  deliveryBracket   DeliveryBracket      @default(NONE) @map("delivery_bracket")
+  deliveryAddress   String?              @map("delivery_address") @db.Text
+  totalServings     Int                  @default(30) @map("total_servings")
+  usedServings      Int                  @default(0) @map("used_servings")
+  amountPaidPaise   BigInt               @map("amount_paid_paise")
+  startDate         DateTime             @map("start_date") @db.Date
+  status            SubscriptionStatus   @default(PENDING_PAYMENT)
+  createdAt         DateTime             @default(now()) @map("created_at") @db.Timestamptz
+
+  customer          Customer             @relation(fields: [businessId, customerId], references: [businessId, id], onDelete: Restrict)
+  plan              SubscriptionPlan     @relation(fields: [businessId, planId], references: [businessId, id], onDelete: Restrict)
+  freezes           SubscriptionFreeze[]
+  redemptions       DailyRedemption[]
+  paymentTx         PaymentTransaction[]
+
+  @@unique([businessId, id], map: "uq_customer_subs_business_id")
+  @@index([businessId, status], map: "idx_customer_subs_status")
+  @@map("customer_subscriptions")
+}
+
+model SubscriptionFreeze {
+  id              String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId      String               @map("business_id") @db.Uuid
+  subscriptionId  String               @map("subscription_id") @db.Uuid
+  freezeDate      DateTime             @map("freeze_date") @db.Date
+  reason          String?              @db.VarChar(200)
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz
+
+  subscription    CustomerSubscription @relation(fields: [businessId, subscriptionId], references: [businessId, id], onDelete: Cascade)
+
+  @@unique([subscriptionId, freezeDate], map: "uq_sub_freeze_date")
+  @@index([businessId, freezeDate], map: "idx_sub_freeze_lookup")
+  @@map("subscription_freezes")
+}
+
+model DailyRedemption {
+  id                String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId        String               @map("business_id") @db.Uuid
+  subscriptionId    String               @map("subscription_id") @db.Uuid
+  redemptionDate    DateTime             @map("redemption_date") @db.Date
+  collectionSlot    CollectionSlot       @map("collection_slot")
+  verifiedByAdminId String               @map("verified_by_admin_id") @db.Uuid
+  linkedSaleId      String?              @unique @map("linked_sale_id") @db.Uuid
+  redeemedAt        DateTime             @default(now()) @map("redeemed_at") @db.Timestamptz
+
+  subscription      CustomerSubscription @relation(fields: [businessId, subscriptionId], references: [businessId, id], onDelete: Restrict)
+
+  @@unique([subscriptionId, redemptionDate], map: "uq_daily_redemption_once_per_day")
+  @@index([businessId, redemptionDate], map: "idx_daily_redemptions_date")
+  @@map("daily_redemptions")
+}
+
+model PaymentTransaction {
+  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  businessId         String               @map("business_id") @db.Uuid
+  razorpayOrderId    String               @unique @map("razorpay_order_id") @db.VarChar(100)
+  razorpayPaymentId  String?              @unique @map("razorpay_payment_id") @db.VarChar(100)
+  amountPaise        BigInt               @map("amount_paise")
+  status             OnlinePaymentStatus  @default(PENDING)
+  customerOrderId    String?              @map("customer_order_id") @db.Uuid
+  subscriptionId     String?              @map("subscription_id") @db.Uuid
+  verifiedAt         DateTime?            @map("verified_at") @db.Timestamptz
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz
+
+  customerOrder      CustomerOrder?       @relation(fields: [businessId, customerOrderId], references: [businessId, id], onDelete: Restrict)
+  subscription       CustomerSubscription? @relation(fields: [businessId, subscriptionId], references: [businessId, id], onDelete: Restrict)
+
+  @@map("payment_transactions")
+}
 ```

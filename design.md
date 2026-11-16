@@ -1,38 +1,42 @@
 # 🌊 Nutrients Ocean – System Architecture & Technical Design Document
-## Finance Management Dashboard V1
+## Customer Ordering, QR Subscriptions & Finance Operating System (V2)
 
 ---
 
 ## 1. Architecture Overview & High-Level Topology
 
-The **Nutrients Ocean Finance Management Dashboard V1** is structured as an audit-grade, decoupled client-server web application backed by a relational database engine. The system delivers sub-100ms financial transaction processing, real-time recipe-based ingredient depletion, double-entry cash ledger accounting, and strict multi-tenant data isolation.
+The **Nutrients Ocean Platform V2** separates public customer experience, internal staff/finance operations, and transactional backend enforcement across three dedicated folders backed by a single PostgreSQL + Prisma database:
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│                        FRONTEND CLIENT (Admin/)                        │
-│             React 18 + Vite + Tailwind CSS + Lucide Icons              │
-│       (POS Terminal, Recipe Margin Analyzer, Daily Closing Wizard)      │
+│              CUSTOMER STOREFRONT (client/ — Next.js 16)                │
+│   Public: /, /menu, /why-us, /app (No Login Required)                  │
+│   On-Demand Auth (Firebase Phone OTP): /checkout, /account, /pass      │
 └────────────────────────────────────┬───────────────────────────────────┘
-                                     │ HTTPS / JSON REST
+                                     │ HTTPS + HTTP-Only Customer JWT
                                      ▼
 ┌────────────────────────────────────────────────────────────────────────┐
-│                        BACKEND API (Server/)                           │
-│                 Node.js 20+ LTS + Express + Prisma ORM                 │
-│  ┌───────────────────────┐  ┌─────────────────┐  ┌──────────────────┐  │
-│  │ Authentication & RBAC │  │  Sales Service  │  │ Inventory Service│  │
-│  └───────────────────────┘  └─────────────────┘  └──────────────────┘  │
-│  ┌───────────────────────┐  ┌─────────────────┐  ┌──────────────────┐  │
-│  │   Refund Engine       │  │  Closing Service│  │  Cash Ledger Svc │  │
-│  └───────────────────────┘  └─────────────────┘  └──────────────────┘  │
+│               ADMIN & STAFF PORTAL (Admin/ — React + Vite)             │
+│  Dashboard • Revenue • Expenses • Investments • Purchases • Inventory  │
+│  Reinvestment • P&L Essential • Subscriptions & QR Scan • Analytics    │
+│  PDF / Excel (.xlsx) Report Exports                                    │
 └────────────────────────────────────┬───────────────────────────────────┘
-                                     │ Prisma Client (Prepared Statements)
+                                     │ HTTPS + HTTP-Only Admin JWT (RBAC)
+                                     ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                     BACKEND API (Server/ — Express + Prisma)           │
+│  • Firebase Admin OTP Verification  • Razorpay Checkout & Webhooks     │
+│  • HMAC-SHA256 60s Rotating QR      • Atomic Subscription Freeze/Redeem│
+│  • Recipe BOM Depletion             • Double-Entry Cash Ledger         │
+│  • Advanced Analytics Aggregator    • Server-Side PDF & Excel Exports  │
+└────────────────────────────────────┬───────────────────────────────────┘
+                                     │ Prisma Client (Serializable Tx)
                                      ▼
 ┌────────────────────────────────────────────────────────────────────────┐
 │                      POSTGRESQL 15+ DATABASE                           │
-│  - 23 Normalized Tables with Composite Foreign Keys                   │
-│  - Integer Paise (BIGINT) Precision & Decimal(14,4) Metric Units      │
-│  - Deferred Constraint Triggers: Pair Transfer Balance Verification   │
-│  - Row-Level Business Isolation Triggers & Audit Logging Engine       │
+│  • Normalized Finance + Customer Ordering + 30-Serving Subscriptions   │
+│  • Integer Paise (BIGINT) & Decimal(14,4) Metric Units                 │
+│  • Deferred Transfer Triggers, Business Isolation & Audit Logs         │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -42,7 +46,11 @@ The **Nutrients Ocean Finance Management Dashboard V1** is structured as an audi
 
 | Layer | Technology | Version | Justification |
 | :--- | :--- | :--- | :--- |
-| **Frontend Framework** | React + Vite | 18.x / 5.x | Ultra-fast HMR, component modularity, high rendering performance for real-time POS and cash counters. |
+| **Customer Frontend** | Next.js + React (`client/`) | 16.4.x / 19.x | SEO-friendly public storefront (`/`, `/menu`, `/why-us`) with no login required; on-demand Firebase Phone OTP checkout & QR pass (`/pass`). |
+| **Admin Frontend** | React + Vite (`Admin/`) | 18.x / 5.x | Ultra-fast operational dashboard for all 11 finance/subscription modules and live camera QR scanning (`html5-qrcode`). |
+| **Customer Auth** | Firebase Phone Auth + `firebase-admin` | v11+ / v13+ | Passwordless SMS OTP verification exchanged for HTTP-only JWT cookies (`aud: "customer"`). |
+| **Payments** | Razorpay SDK + Webhooks | Official Node SDK | Server-computed paise checkout for Subscriptions (`RAZORPAY`) and Single Orders (`RAZORPAY` or `PAY_AT_STALL`). |
+| **QR & Exports** | `qrcode`, `html5-qrcode`, `exceljs`, `pdfkit` | Latest LTS | 60s HMAC-SHA256 rotating QR passes and server-generated `.xlsx` / `.pdf` financial & operational exports. |
 | **Styling & UI Components** | Tailwind CSS + Lucide React | 3.4.x | Clean, utility-first UI without heavy external UI dependencies; responsive tables and modal wizards. |
 | **Backend Runtime** | Node.js (LTS) | 20.x+ | Event-driven, asynchronous I/O with high concurrency throughput for simultaneous POS and stock operations. |
 | **API Framework** | Express.js | 4.x / 5.x | Battle-tested, minimal overhead, unopinionated middleware routing, standardized request lifecycle. |
@@ -55,27 +63,29 @@ The **Nutrients Ocean Finance Management Dashboard V1** is structured as an audi
 
 ## 3. Database Architecture & Schema Design
 
-### 3.1 Domain Model Structure (23 Normalized Tables)
-The relational schema replaces all legacy MongoDB collections with normalized tables:
+### 3.1 Domain Model Structure
+The normalized PostgreSQL schema powers both finance operations and customer ordering/subscriptions:
 
 ```
-[businesses] ─────────┬──► [admins]
-                      ├──► [members] ───────────┬──► [investments] ──► [cash_transactions]
-                      │                         └──► [withdrawals] ──► [cash_transactions]
-                      ├──► [cash_accounts] ─────┬──► [cash_transfers] ──► [cash_transactions]
-                      │                         └──► [cash_transactions]
-                      ├──► [products] ──────────┬──► [recipes] ──► [recipe_items]
-                      │                         ├──► [inventory]
-                      │                         └──► [stock_movements]
-                      ├──► [purchases] ─────────┬──► [purchase_items] ──► [stock_movements]
-                      │                         └──► [payments] ──► [cash_transactions]
-                      ├──► [expenses] ──────────┴──► [payments] ──► [cash_transactions]
-                      ├──► [sales] ─────────────┬──► [sale_items] ──► [sale_item_ingredients]
+[businesses] ─────────┬──► [admins] (SUPER_ADMIN, ADMIN)
+                      ├──► [investments] ───────────────► [cash_transactions]
+                      ├──► [reinvestment_allocations] ──► [cash_transactions]
+                      ├──► [cash_accounts] ─────┬───────► [cash_transfers] ──► [cash_transactions]
+                      │                         └───────► [cash_transactions]
+                      ├──► [products] ──────────┬───────► [recipes] ──► [recipe_items]
+                      │                         ├───────► [inventory]
+                      │                         └───────► [stock_movements]
+                      ├──► [purchases] ─────────┬───────► [purchase_items] ──► [stock_movements]
+                      │                         └───────► [payments] ──► [cash_transactions]
+                      ├──► [expenses] ──────────┴───────► [payments] ──► [cash_transactions]
+                      ├──► [sales] ─────────────┬───────► [sale_items] ──► [sale_item_ingredients]
                       │                         │                 └──► [stock_movements]
-                      │                         ├──► [refunds] ──► [refund_items] ──► [stock_movements]
-                      │                         └──► [cash_transactions]
-                      ├──► [daily_closings] ────┬──► [daily_closing_accounts]
-                      │                         └──► [cash_transactions (Reconciliation Adjustments)]
+                      │                         ├───────► [refunds] ──► [refund_items] ──► [stock_movements]
+                      │                         └───────► [cash_transactions]
+                      ├──► [customers] ─────────┬───────► [customer_orders] ──► [customer_order_items]
+                      │                         └───────► [customer_subscriptions] ──► [subscription_freezes / daily_redemptions]
+                      ├──► [daily_closings] ────┬───────► [daily_closing_accounts]
+                      │                         └───────► [cash_transactions (Reconciliation Adjustments)]
                       └──► [audit_logs]
 ```
 
@@ -219,6 +229,25 @@ If closing for the first business day (`2026-11-10`), the opening balance defaul
 
 ---
 
+### 4.5 Workflow 5: On-Demand Firebase OTP Ordering & Razorpay / Pay-at-Stall Settlement
+1. **Unauthenticated Browsing:** Customers browse `client/` (`/`, `/menu`, `/why-us`) freely.
+2. **Checkout Auth Gate:** When placing a single order or buying a 30-serving subscription, `client/` triggers Firebase Phone OTP, then sends `idToken` to `POST /api/v1/auth/customer/firebase` to receive an HTTP-only `customerAccessToken` (`aud: "customer"`).
+3. **Server-Computed Totals:** `Server/` calculates item prices, flavor options, and 2 KM delivery fees (`0 / ₹5 / ₹10 / ₹15`) in integer paise directly from PostgreSQL.
+4. **Payment Modes:**
+   - **Single Orders:** Customer selects **`RAZORPAY`** or **`PAY_AT_STALL`**.
+   - **Monthly Subscriptions:** Customer pays via **`RAZORPAY`**; dual verification (`/payments/razorpay/verify` + raw-body webhook) activates `customer_subscriptions` with `totalServings = 30` and posts a `CREDIT` to `cash_transactions` (`UPI_DIGITAL`).
+
+---
+
+### 4.6 Workflow 6: Unlimited-Freeze 30-Serving Subscriptions & Option 1 Rotating QR Pass
+1. **30-Item Serving Pool (No Expiry Cap):** Every monthly subscription starts with `totalServings = 30`, `usedServings = 0`. Skipped days or weeks (frozen or unredeemed) never forfeit servings; the plan stays `ACTIVE` until all 30 servings are collected (`usedServings === 30` → `COMPLETED`).
+2. **Freeze / Skip Calendar:** Customers can mark/unmark upcoming freeze dates or multi-day/week ranges (`POST/DELETE /api/v1/subscriptions/:id/freeze`) before slot cutoff so `Admin/` kitchen prep forecasts accurately exclude frozen members.
+3. **60s Rotating Daily QR (`/pass` → `Admin/` `/scan`):**
+   - `GET /api/v1/customer/qr-pass` issues an HMAC-SHA256 payload `{ v: 1, t: "SUB" | "ORDER", id, d: todayIST, s: slot, w: window60s, sig }` that rotates every 60 seconds and daily at midnight IST.
+   - `Admin/` `/scan` submits the scanned token to `POST /api/v1/admin/qr/redeem` inside a `Serializable` transaction: validates HMAC + IST date + 60s window, blocks frozen or duplicate same-day redemptions (`@@unique([subscriptionId, redemptionDate])`), increments `usedServings`, triggers recipe BOM inventory deduction, and settles `PAY_AT_STALL` orders if applicable.
+
+---
+
 ## 5. Backend Architecture & Service Layer Structure
 
 The `Server/` codebase follows a clean layered design separating HTTP transport, business orchestration, and database access:
@@ -242,19 +271,32 @@ Server/
 │   │   └── error.middleware.js     # Centralized error handler
 │   ├── controllers/
 │   │   ├── auth.controller.js
+│   │   ├── customerAuth.controller.js # Firebase Phone OTP -> customer JWT
+│   │   ├── catalog.controller.js      # Public menu & subscription plans
+│   │   ├── order.controller.js        # Online single orders & Razorpay/Pay-at-Stall
+│   │   ├── subscription.controller.js # 30-serving plans & unlimited freeze calendar
+│   │   ├── qr.controller.js           # 60s rotating QR issue & admin redemption
 │   │   ├── sales.controller.js
 │   │   ├── recipes.controller.js
 │   │   ├── inventory.controller.js
 │   │   ├── cash.controller.js
 │   │   ├── closings.controller.js
-│   │   └── reports.controller.js
+│   │   ├── reports.controller.js
+│   │   ├── analytics.controller.js    # Advanced margin, slot & retention metrics
+│   │   └── export.controller.js       # Server-side PDF & Excel (.xlsx) exports
 │   ├── services/
-│   │   ├── sales.service.js       # POS sale orchestration & recipe deductions
-│   │   ├── refund.service.js      # Hamilton-Hare allocation & restock
-│   │   ├── inventory.service.js   # MAC cost recalculation & movements
-│   │   ├── transfer.service.js    # Paired internal transfers
-│   │   ├── closing.service.js     # Sequential closing & reconciliation
-│   │   └── report.service.js      # Financial P&L and margin queries
+│   │   ├── firebase.service.js        # firebase-admin ID token verification
+│   │   ├── razorpay.service.js        # Order creation, HMAC verify & webhook
+│   │   ├── qr.service.js              # HMAC-SHA256 rotating QR & atomic redeem
+│   │   ├── subscription.service.js    # 30-serving state & unlimited freeze engine
+│   │   ├── sales.service.js           # POS sale orchestration & recipe deductions
+│   │   ├── refund.service.js          # Hamilton-Hare allocation & restock
+│   │   ├── inventory.service.js       # MAC cost recalculation & movements
+│   │   ├── transfer.service.js        # Paired internal transfers
+│   │   ├── closing.service.js         # Sequential closing & reconciliation
+│   │   ├── report.service.js          # Financial P&L and margin queries
+│   │   ├── analytics.service.js       # Cohort, slot, and cost-spike aggregations
+│   │   └── export.service.js          # ExcelJS & PDFKit report builders
 │   ├── utils/
 │   │   ├── currency.js            # Integer paise formatting & math
 │   │   ├── hamilton-hare.js       # Largest remainder rounding engine
@@ -281,32 +323,20 @@ class AppError extends Error {
 
 ## 6. Frontend Architecture & User Interface Design
 
-The `Admin/` client provides a responsive, single-page application built with React and Vite. It is strictly focused on Nutrients Ocean food operations with **zero task-planner or PlanPro elements**.
+The `Admin/` client provides a responsive, single-page application built with React and Vite, strictly focused on Nutrients Ocean operations and finances with **zero mock data**.
 
-### 6.1 Core Screen Layouts
-1. **Executive Financial Summary (Home / Dashboard):**
-   - KPI Stat Cards: Today's Gross Revenue (₹), Net Profit (₹), Cash Drawer Balance (₹), Active UPI Balance (₹), Low Stock Alerts Count.
-   - Quick Action Bar: "New POS Sale", "Record Expense", "Transfer Funds", "Start Daily Closing".
-   - Recent Transactions Stream: Real-time ledger entries with status badges.
-2. **POS Counter Terminal (`/sales/pos`):**
-   - Product Grid: Filterable by category (Smoothies, Protein Bowls, Meals, Supplements).
-   - Order Cart: Dynamic line item quantities, line discount input, bill discount.
-   - Payment Split Modal: Direct inputs for Cash and UPI amounts with auto-balance calculation.
-3. **Recipe & Ingredient Studio (`/recipes`):**
-   - Bill of Materials editor: Multi-ingredient selector with yield definition and live BOM cost calculation.
-   - Margin Simulator: Visual display of Profit Margin % based on selling price vs ingredient cost.
-4. **Inventory & Stock Manager (`/inventory`):**
-   - Live Stock Table: Quantity on hand, base unit (`g`, `ml`, `pcs`), Moving Average Cost, valuation.
-   - Adjustment Dialog: Log wastage/spoilage or manual count corrections.
-5. **Cash Drawer & Internal Transfer Hub (`/cash`):**
-   - Account Cards: Physical Drawer, PhonePe Merchant UPI, HDFC Bank Current.
-   - Transfer Modal: Two-account selector with automatic paired ledger verification.
-6. **Sequential Daily Closing Wizard (`/closings`):**
-   - Day Validation Step: Confirms previous day closing status.
-   - Denomination Calculator: Detailed cash note breakdown (₹500, ₹200, ₹100, ₹50, ₹20, ₹10, Coins).
-   - Reconciliation Diff View: Shows Expected vs Actual with discrepancy warning.
-7. **Partner Equity & Reinvestment Ledger (`/partners`):**
-   - Capital accounts for the 3 founding partners, profit distribution history, and earmarked reinvestment funds.
+### 6.1 Core `Admin/` Module Suite (11 Modules)
+1. **Dashboard:** Today's gross/net revenue, net profit, Cash/UPI/Bank balances, active subscriptions, pending online orders, kitchen prep forecast, and low-stock alerts.
+2. **Revenue:** Counter POS terminal (Cash/UPI/Split), online Razorpay & Pay-at-Stall orders, subscription revenue register, and Hamilton-Hare item-level refunds.
+3. **Expenses:** Operating expenses across all 11 standardized categories with partial/full payment instalments.
+4. **Investments:** Business capital injections (`INVESTMENT_INFLOW`) and funding history across cash/bank accounts.
+5. **Purchases:** Vendor stock procurement, Moving Average Cost updates, and supplier payment ledger.
+6. **Inventory:** `FINISHED_PRODUCT`, `RAW_INGREDIENT`, `RETAIL_READY`, and `PACKAGING` stock levels, Recipe & Ingredient Studio (BOM editor), wastage/count adjustments, and stock movements.
+7. **Reinvestment:** Earmarked business growth reserves (`EQUIPMENT_EXPANSION`, `MARKETING_RESERVE`, `BULK_INVENTORY_RESERVE`, `EMERGENCY_RESERVE`, `NEW_BRANCH_CAPEX`).
+8. **P&L Essential:** Live Profit & Loss statement, Daily Cash Flow statement, Cash Drawer & Internal Transfer Hub, and Sequential Daily Closing Wizard.
+9. **Subscriptions & QR Scanner (`/subscriptions`, `/scan`):** Active/completed 30-serving member directory, freeze/skip calendar & daily kitchen prep count, single-order fulfillment queue, and live camera QR scanner (`html5-qrcode`) for instant meal & order redemptions.
+10. **Advanced Analytics (`/analytics`):** Revenue & gross margin time-series, recipe contribution margins, ingredient cost-spike alerts, subscriber redemption & freeze trends, Morning vs. Evening slot split, and Pickup vs. 2 KM Delivery breakdown.
+11. **PDF / Excel Exports (`/exports`):** Download verified `.pdf` and `.xlsx` reports for P&L statements, Revenue/Sales registers, Expenses, Purchases, Inventory valuation, Daily Closings, and Subscription/Redemption logs.
 
 ---
 
