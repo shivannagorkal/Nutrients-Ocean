@@ -18,5 +18,6 @@ export const env = {
   JWT_SECRET: process.env.JWT_SECRET || 'nutrients_ocean_super_secure_jwt_secret_2026_kolkata',
   ALLOWED_USERS: parseAllowedUsers(process.env.ALLOWED_USERS),
   FRONTEND_ORIGIN: process.env.FRONTEND_ORIGIN || 'http://localhost:5173',
+  COOKIE_SAME_SITE: process.env.COOKIE_SAME_SITE,
   TZ: process.env.TZ || 'Asia/Kolkata',
 };

@@ -1,5 +1,7 @@
 .env
-.en.examplev
-
+.env*.local
+*.env
+dist/
+node_modules/
 /node_modules
-node_modules
+

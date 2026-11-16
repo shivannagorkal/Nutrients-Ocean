@@ -66,7 +66,7 @@ export function csrfProtection(req, res, next) {
     return next();
   }
 
-  const origin = req.headers.origin;
+  const origin = req.headers.origin ? req.headers.origin.replace(/\/$/, '') : null;
   const referer = req.headers.referer;
 
   // In test environment, skip if neither is set
@@ -74,12 +74,15 @@ export function csrfProtection(req, res, next) {
     return next();
   }
 
-  const allowedOrigin = env.FRONTEND_ORIGIN;
+  const allowedOrigins = (env.FRONTEND_ORIGIN || '')
+    .split(',')
+    .map((o) => o.trim().replace(/\/$/, ''))
+    .filter(Boolean);
 
   let isValid = false;
-  if (origin && origin === allowedOrigin) {
+  if (origin && (allowedOrigins.length === 0 || allowedOrigins.includes(origin) || allowedOrigins.includes('*'))) {
     isValid = true;
-  } else if (referer && referer.startsWith(allowedOrigin)) {
+  } else if (referer && (allowedOrigins.length === 0 || allowedOrigins.some((o) => referer.startsWith(o)) || allowedOrigins.includes('*'))) {
     isValid = true;
   }
 

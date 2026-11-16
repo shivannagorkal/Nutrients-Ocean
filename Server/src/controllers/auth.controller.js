@@ -11,11 +11,14 @@ export class AuthController {
       const { email, password } = req.body;
       const result = await AuthService.login(email, password);
 
-      // Set httpOnly session cookie with 7-day expiry per Section 11
+      // Set httpOnly session cookie with 7-day expiry per Section 11 (strict by default, configurable via COOKIE_SAME_SITE)
+      const sameSite = (env.COOKIE_SAME_SITE || 'strict').toLowerCase();
+      const isSecure = env.NODE_ENV === 'production' || sameSite === 'none';
+
       res.cookie(SESSION_COOKIE_NAME, result.token, {
         httpOnly: true,
-        secure: env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        secure: isSecure,
+        sameSite,
         maxAge: 7 * 24 * 60 * 60 * 1000,
         path: '/',
       });
@@ -50,10 +53,13 @@ export class AuthController {
         await AuthService.logout(req.user.email);
       }
 
+      const sameSite = (env.COOKIE_SAME_SITE || 'strict').toLowerCase();
+      const isSecure = env.NODE_ENV === 'production' || sameSite === 'none';
+
       res.clearCookie(SESSION_COOKIE_NAME, {
         httpOnly: true,
-        secure: env.NODE_ENV === 'production',
-        sameSite: 'strict',
+        secure: isSecure,
+        sameSite,
         path: '/',
       });
 
