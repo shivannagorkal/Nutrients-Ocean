@@ -58,10 +58,10 @@ function ComparisonChip({
   const isPositive = diff > 0;
 
   const colorClasses = isZero
-    ? 'text-slate-600 bg-slate-100 dark:bg-slate-800 dark:text-slate-300'
+    ? 'text-slate-700 bg-slate-100 border border-slate-200'
     : isPositive
-    ? 'text-emerald-700 bg-emerald-50 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/50'
-    : 'text-rose-700 bg-rose-50 dark:bg-rose-950/40 dark:text-rose-400 border border-rose-200/50';
+    ? 'text-emerald-800 bg-emerald-100/90 border border-emerald-300 font-bold'
+    : 'text-rose-800 bg-rose-100/90 border border-rose-300 font-bold';
 
   const formattedDiff = isCurrency
     ? `${isPositive ? '+' : isZero ? '' : '-'}${formatRupee(Math.abs(diff))}`
@@ -75,19 +75,19 @@ function ComparisonChip({
   return (
     <div className="flex items-center gap-1.5 flex-wrap">
       <span
-        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-semibold ${colorClasses}`}
+        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[11px] ${colorClasses}`}
       >
         {isZero ? (
-          <Minus className="h-3 w-3" />
+          <Minus className="h-3 w-3 stroke-[2.5]" />
         ) : isPositive ? (
-          <TrendingUp className="h-3 w-3" />
+          <TrendingUp className="h-3 w-3 stroke-[2.5]" />
         ) : (
-          <TrendingDown className="h-3 w-3" />
+          <TrendingDown className="h-3 w-3 stroke-[2.5]" />
         )}
         <span>{formattedDiff}</span>
-        {!isZero && <span className="font-normal opacity-90">{pctText}</span>}
+        {!isZero && <span className="font-semibold">{pctText}</span>}
       </span>
-      <span className="text-[10px] text-slate-400 font-medium">{label}</span>
+      <span className="text-[10px] text-slate-500 font-medium">{label}</span>
     </div>
   );
 }

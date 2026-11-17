@@ -25,6 +25,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res: any = await api.get('/auth/me');
         setUser(res.user || null);
       } catch (err: any) {
+        try {
+          localStorage.removeItem('auth_token');
+        } catch (e) {}
         setUser(null);
       } finally {
         setLoading(false);
@@ -35,6 +38,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     const res: any = await api.post('/auth/login', { email, password });
+    if (res.token) {
+      try {
+        localStorage.setItem('auth_token', res.token);
+      } catch (e) {}
+    }
     setUser(res.user || null);
   };
 
@@ -44,6 +52,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (e) {
       // ignore
     } finally {
+      try {
+        localStorage.removeItem('auth_token');
+      } catch (e) {}
       setUser(null);
     }
   };

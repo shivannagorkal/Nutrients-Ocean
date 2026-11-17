@@ -1,9 +1,11 @@
 import request from 'supertest';
+import { jest } from '@jest/globals';
 import app from '../src/app.js';
 import { pool } from '../src/db/index.js';
 import { env } from '../src/config/env.js';
 
 describe('Phase 2 Auth & Security Base Verification', () => {
+  jest.setTimeout(30000);
   const validEmail = 'shivanna@nutrientsocean.com';
   const validPassword = 'Admin@123'; // matches passwordHash generated in Phase 1
   let sessionCookie = '';

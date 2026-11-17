@@ -61,6 +61,86 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans text-slate-800">
+      {/* Mobile Drawer Backdrop & Drawer */}
+      {mobileMenuOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex">
+          <div
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity"
+            onClick={() => setMobileMenuOpen(false)}
+          />
+          <div className="relative w-72 max-w-[80vw] bg-white h-full shadow-2xl flex flex-col z-10 animate-in slide-in-from-left duration-200">
+            {/* Brand / Header */}
+            <div className="h-16 flex items-center justify-between px-5 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="h-8 w-8 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-bold text-sm shadow-sm">
+                  NO
+                </div>
+                <div>
+                  <h1 className="font-bold text-slate-900 text-xs tracking-tight leading-none">Nutrients Ocean</h1>
+                  <p className="text-[10px] text-emerald-700 font-medium mt-0.5">Sales & Expense</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setMobileMenuOpen(false)}
+                className="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100"
+                aria-label="Close menu"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Nav list */}
+            <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={({ isActive }) =>
+                      `flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'bg-emerald-50 text-emerald-800 font-semibold'
+                          : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
+                      }`
+                    }
+                  >
+                    <div className="flex items-center gap-3">
+                      <Icon className="h-4 w-4 flex-shrink-0" />
+                      <span>{item.name}</span>
+                    </div>
+                    {item.name === 'Data check' && item.badgeCount > 0 && (
+                      <span className="px-2 py-0.5 text-xs font-bold rounded-full bg-amber-100 text-amber-800">
+                        {item.badgeCount}
+                      </span>
+                    )}
+                  </NavLink>
+                );
+              })}
+            </nav>
+
+            {/* Mobile Drawer Footer with User & Logout */}
+            <div className="p-4 border-t border-slate-100 bg-slate-50/80 space-y-3">
+              <div className="truncate">
+                <p className="text-xs font-semibold text-slate-900 truncate">{user?.member || 'User'}</p>
+                <p className="text-[11px] text-slate-500 truncate">{user?.email}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  handleLogout();
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors border border-red-200/60"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Desktop Sidebar (Material Navigation Drawer) */}
       <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-200/80 shadow-sm flex-shrink-0 z-20">
         {/* Brand / Logo */}
@@ -179,10 +259,11 @@ export default function Layout() {
 
             <button
               onClick={handleLogout}
-              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition border border-slate-200"
+              title="Logout"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-slate-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition border border-slate-200"
             >
               <LogOut className="h-3.5 w-3.5" />
-              <span>Logout</span>
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </header>

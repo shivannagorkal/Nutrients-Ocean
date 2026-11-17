@@ -417,47 +417,57 @@ export default function Expenses() {
               No expenses recorded in this range.
             </div>
           ) : (
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={dashboard?.categoryTable.filter((c) => c.amount > 0)}
-                    dataKey="amount"
-                    nameKey="categoryName"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={80}
-                    paddingAngle={3}
-                  >
-                    {dashboard?.categoryTable.map((entry, index) => (
-                      <Cell key={entry.categoryId} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(val: any) => [formatRupee(val), 'Amount']}
-                    contentStyle={{
-                      backgroundColor: '#0f172a',
-                      borderRadius: '8px',
-                      border: 'none',
-                      color: '#fff',
-                      fontSize: '11px',
-                    }}
-                  />
-                  <Legend
-                    verticalAlign="bottom"
-                    height={36}
-                    formatter={(value) => {
-                      const item = dashboard?.categoryTable.find((c) => c.categoryName === value);
-                      return (
-                        <span className="text-[11px] font-semibold text-slate-700">
-                          {value}: {formatRupee(item?.amount)} ({item?.percentage}%)
-                        </span>
-                      );
-                    }}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
+            <div className="flex flex-col">
+              <div className="h-52 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={dashboard?.categoryTable.filter((c) => c.amount > 0)}
+                      dataKey="amount"
+                      nameKey="categoryName"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={48}
+                      outerRadius={76}
+                      paddingAngle={3}
+                    >
+                      {dashboard?.categoryTable.map((entry, index) => (
+                        <Cell key={entry.categoryId} fill={CATEGORY_COLORS[index % CATEGORY_COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      formatter={(val: any) => [formatRupee(val), 'Amount']}
+                      contentStyle={{
+                        backgroundColor: '#0f172a',
+                        borderRadius: '8px',
+                        border: 'none',
+                        color: '#fff',
+                        fontSize: '11px',
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Responsive Category Legend within card boundary */}
+              <div className="mt-3 pt-3 border-t border-slate-100 flex flex-wrap gap-2">
+                {dashboard?.categoryTable
+                  .filter((c) => c.amount > 0)
+                  .map((item, index) => (
+                    <div
+                      key={item.categoryId}
+                      className="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-slate-50 border border-slate-100 text-[11px]"
+                    >
+                      <span
+                        className="w-2.5 h-2.5 rounded-sm shrink-0"
+                        style={{ backgroundColor: CATEGORY_COLORS[index % CATEGORY_COLORS.length] }}
+                      />
+                      <span className="font-medium text-slate-700">{item.categoryName}:</span>
+                      <span className="font-bold text-slate-900">{formatRupee(item.amount)}</span>
+                      <span className="text-slate-400 text-[10px]">({item.percentage}%)</span>
+                    </div>
+                  ))}
+              </div>
             </div>
           )}
         </div>

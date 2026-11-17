@@ -8,8 +8,29 @@ const api = axios.create({
   },
 });
 
+// Interceptor: Attach Authorization Bearer token as fallback for iOS/Safari ITP cross-site cookie blocking
+api.interceptors.request.use((config) => {
+  try {
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  } catch (e) {
+    // Ignore localStorage access restrictions in private browsing if any
+  }
+  return config;
+});
+
 api.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    const tokenHeader = response.headers?.['x-session-token'];
+    if (tokenHeader && typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('auth_token', tokenHeader);
+      } catch (e) {}
+    }
+    return response.data;
+  },
   (error) => {
     const errorData = error.response?.data?.error;
     const message = errorData?.message || error.message || 'An error occurred';

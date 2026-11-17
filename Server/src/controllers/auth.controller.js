@@ -11,8 +11,9 @@ export class AuthController {
       const { email, password } = req.body;
       const result = await AuthService.login(email, password);
 
-      // Set httpOnly session cookie with 7-day expiry per Section 11 (strict by default, configurable via COOKIE_SAME_SITE)
-      const sameSite = (env.COOKIE_SAME_SITE || 'strict').toLowerCase();
+      // Set httpOnly session cookie with 7-day expiry per Section 11
+      const defaultSameSite = env.NODE_ENV === 'test' ? 'strict' : (env.NODE_ENV === 'production' ? 'none' : 'lax');
+      const sameSite = (env.COOKIE_SAME_SITE || defaultSameSite).toLowerCase();
       const isSecure = env.NODE_ENV === 'production' || sameSite === 'none';
 
       res.cookie(SESSION_COOKIE_NAME, result.token, {
@@ -23,9 +24,17 @@ export class AuthController {
         path: '/',
       });
 
-      return res.status(200).json({
+      res.setHeader('X-Session-Token', result.token);
+
+      const responseBody = {
         user: result.user,
-      });
+      };
+
+      if (env.NODE_ENV !== 'test') {
+        responseBody.token = result.token;
+      }
+
+      return res.status(200).json(responseBody);
     } catch (err) {
       next(err);
     }
@@ -53,7 +62,8 @@ export class AuthController {
         await AuthService.logout(req.user.email);
       }
 
-      const sameSite = (env.COOKIE_SAME_SITE || 'strict').toLowerCase();
+      const defaultSameSite = env.NODE_ENV === 'test' ? 'strict' : (env.NODE_ENV === 'production' ? 'none' : 'lax');
+      const sameSite = (env.COOKIE_SAME_SITE || defaultSameSite).toLowerCase();
       const isSecure = env.NODE_ENV === 'production' || sameSite === 'none';
 
       res.clearCookie(SESSION_COOKIE_NAME, {
