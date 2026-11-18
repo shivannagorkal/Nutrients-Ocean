@@ -5,7 +5,7 @@
 // ============================================================
 
 const siteData = {
-  siteUrl: "https://www.example.com", // TODO: your real domain, e.g. https://nexvyro.in
+  siteUrl: "https://nutrientsocean.in",
 
   brand: {
     name: "Nutrients Ocean",

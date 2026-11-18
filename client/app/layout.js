@@ -36,6 +36,16 @@ export const metadata = {
     locale: "en_IN",
     siteName: siteData.brand.name,
   },
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon.png', type: 'image/png', sizes: '192x192' },
+      { url: '/images/logo.jpg', type: 'image/jpeg' },
+    ],
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
 };
 
 export const viewport = { themeColor: "#71BC75" };
