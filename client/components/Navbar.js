@@ -3,20 +3,26 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu as MenuIcon, X, Phone, ShoppingBag, QrCode, User } from "lucide-react";
+import { Menu as MenuIcon, X, Phone, ShoppingBag, QrCode, User, LogOut } from "lucide-react";
 import siteData from "@/data/siteData";
 import { WhatsAppIcon } from "./SocialIcons";
 import { useCart } from "@/context/CartContext";
 import { useCustomerAuth } from "@/context/CustomerAuthContext";
 
-const links = [
-  { href: "/menu", label: "Menu" },
+const desktopLinks = [
+  { href: "/menu", label: "Menu & Plans" },
   { href: "/pass", label: "Daily Pass", badge: "Live QR" },
-  { href: "/account", label: "My Account" },
+  { href: "/why-us", label: "Why Us" },
+  { href: "/#contact", label: "Location" },
+];
+
+const mobileLinks = [
+  { href: "/menu", label: "Menu & Plans" },
+  { href: "/pass", label: "Daily Pass", badge: "Live QR" },
   { href: "/why-us", label: "Why Us" },
   { href: "/#how", label: "How It Works" },
-  { href: "/#supplements", label: "Supplements" },
-  { href: "/#contact", label: "Contact" },
+  { href: "/#contact", label: "Stall Location" },
+  { href: "/account", label: "My Account" },
   { href: "/refund", label: "Refund Policy" },
 ];
 
@@ -27,7 +33,7 @@ export default function Navbar({ forceScrolled = false }) {
   const tel = `tel:${siteData.contact.phoneRaw}`;
 
   const { itemCount, openCart } = useCart();
-  const { isAuthenticated, openAuthModal, customer } = useCustomerAuth();
+  const { isAuthenticated, openAuthModal, customer, logout } = useCustomerAuth();
 
   useEffect(() => {
     if (forceScrolled) {
@@ -44,14 +50,14 @@ export default function Navbar({ forceScrolled = false }) {
   return (
     <header className={`navbar ${isScrolled ? "is-scrolled" : ""}`}>
       <div className="container navbar-inner">
-        <Link href="/" className="brand">
+        <Link href={isAuthenticated ? "/menu" : "/"} className="brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={siteData.brand.logo} width="40" height="40" alt={`${siteData.brand.name} logo`} />
           <span>{siteData.brand.name}</span>
         </Link>
 
         <nav className="nav-links" aria-label="Main">
-          {links.map((l) => {
+          {desktopLinks.map((l) => {
             const isActive = !l.href.includes("#") && pathname === l.href;
             return (
               <Link
@@ -78,7 +84,9 @@ export default function Navbar({ forceScrolled = false }) {
               display: "flex",
               alignItems: "center",
               gap: "6px",
-              padding: "8px 14px",
+              padding: "0 14px",
+              height: "40px",
+              minHeight: "40px",
             }}
             aria-label="View Cart"
           >
@@ -87,11 +95,11 @@ export default function Navbar({ forceScrolled = false }) {
             {itemCount > 0 && (
               <span
                 style={{
-                  background: "#1E6B34",
+                  background: "var(--primary)",
                   color: "#FFFFFF",
                   fontSize: "11px",
                   fontWeight: "700",
-                  borderRadius: "999px",
+                  borderRadius: "9999px",
                   padding: "1px 7px",
                   marginLeft: "2px",
                 }}
@@ -103,34 +111,76 @@ export default function Navbar({ forceScrolled = false }) {
 
           {/* User Sign In / Profile Quick Button */}
           {!isAuthenticated ? (
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={() => openAuthModal()}
-              style={{ display: "flex", alignItems: "center", gap: "6px", padding: "8px 14px" }}
-            >
-              <User size={16} />
-              <span>Sign In</span>
-            </button>
-          ) : (
             <Link
-              href="/account"
+              href="/login"
               className="btn btn-outline"
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: "6px",
-                padding: "8px 14px",
+                padding: "0 14px",
+                height: "40px",
+                minHeight: "40px",
                 textDecoration: "none",
               }}
             >
               <User size={16} />
-              <span>{customer?.fullName || customer?.phone?.slice(-4) ? `Account (${customer?.phone?.slice(-4)})` : "Account"}</span>
+              <span>Sign In</span>
             </Link>
+          ) : (
+            <>
+              <Link
+                href="/account"
+                className="btn btn-outline"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "0 14px",
+                  height: "40px",
+                  minHeight: "40px",
+                  textDecoration: "none",
+                }}
+              >
+                <User size={16} />
+                <span>
+                  {customer?.fullName || (customer?.phone ? `Account (${customer.phone.slice(-4)})` : "Account")}
+                </span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => logout()}
+                className="btn btn-tonal"
+                title="Sign Out"
+                aria-label="Logout"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  padding: "0 12px",
+                  height: "40px",
+                  minHeight: "40px",
+                  color: "#B91C1C",
+                  cursor: "pointer",
+                }}
+              >
+                <LogOut size={16} />
+                <span style={{ fontSize: "13px", fontWeight: "600" }}>Logout</span>
+              </button>
+            </>
           )}
 
-          <a className="btn btn-accent nav-call" href={tel} aria-label="Call to pre-order">
-            <Phone size={18} />
+          <a
+            className="btn btn-primary nav-call"
+            href={tel}
+            aria-label="Call to pre-order"
+            style={{
+              height: "40px",
+              minHeight: "40px",
+              padding: "0 16px",
+            }}
+          >
+            <Phone size={16} />
             <span>Call Now</span>
           </a>
 
@@ -146,7 +196,7 @@ export default function Navbar({ forceScrolled = false }) {
       </div>
 
       <div className={`mobile-panel ${open ? "open" : ""}`}>
-        {links.map((l) => {
+        {mobileLinks.map((l) => {
           const isActive = !l.href.includes("#") && pathname === l.href;
           return (
             <Link
@@ -176,28 +226,74 @@ export default function Navbar({ forceScrolled = false }) {
           </button>
 
           {!isAuthenticated ? (
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={() => {
-                setOpen(false);
-                openAuthModal();
-              }}
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
-            >
-              <User size={18} />
-              Customer Sign In
-            </button>
+            <>
+              <Link
+                href="/login"
+                className="btn btn-outline"
+                onClick={() => setOpen(false)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  textDecoration: "none",
+                }}
+              >
+                <User size={18} />
+                Sign In
+              </Link>
+              <Link
+                href="/register"
+                className="btn btn-tonal"
+                onClick={() => setOpen(false)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  textDecoration: "none",
+                }}
+              >
+                Create Account
+              </Link>
+            </>
           ) : (
-            <Link
-              href="/account"
-              className="btn btn-outline"
-              onClick={() => setOpen(false)}
-              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
-            >
-              <User size={18} />
-              My Account
-            </Link>
+            <>
+              <Link
+                href="/account"
+                className="btn btn-outline"
+                onClick={() => setOpen(false)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  textDecoration: "none",
+                }}
+              >
+                <User size={18} />
+                <span>My Account ({customer?.fullName || customer?.phone?.slice(-4)})</span>
+              </Link>
+              <button
+                type="button"
+                className="btn btn-tonal"
+                onClick={() => {
+                  setOpen(false);
+                  logout();
+                }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  color: "#B91C1C",
+                  cursor: "pointer",
+                }}
+              >
+                <LogOut size={18} />
+                Logout
+              </button>
+            </>
           )}
 
           <a className="btn btn-accent" href={tel} onClick={() => setOpen(false)}>

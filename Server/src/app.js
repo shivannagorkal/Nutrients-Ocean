@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import hpp from 'hpp';
 import { env } from './config/env.js';
+import { isOriginAllowed } from './utils/origin.js';
 import apiRoutes from './routes/index.js';
 import { csrfProtection } from './middlewares/auth.middleware.js';
 import { errorHandler } from './middlewares/error.middleware.js';
@@ -39,12 +40,10 @@ const allowedOrigins = (env.FRONTEND_ORIGIN || '')
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin) return callback(null, true);
-      const cleanOrigin = origin.replace(/\/$/, '');
-      if (allowedOrigins.length === 0 || allowedOrigins.includes(cleanOrigin) || allowedOrigins.includes('*')) {
+      if (isOriginAllowed(origin, allowedOrigins)) {
         return callback(null, true);
       }
-      return callback(new Error(`CORS blocked for origin: ${origin}`));
+      return callback(null, false);
     },
     credentials: true,
     exposedHeaders: ['X-Session-Token'],

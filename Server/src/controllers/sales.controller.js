@@ -20,6 +20,15 @@ export class SalesController {
     }
   }
 
+  static async createSaleOrder(req, res, next) {
+    try {
+      const result = await SalesService.createSaleOrder(req.body, req.user.email);
+      return res.status(201).json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async listSales(req, res, next) {
     try {
       const data = await SalesService.listSales(req.query);

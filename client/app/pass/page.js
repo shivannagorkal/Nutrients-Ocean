@@ -89,8 +89,8 @@ export default function PassPage() {
       <main
         style={{
           minHeight: '85vh',
-          backgroundColor: '#0F172A',
-          color: '#FFFFFF',
+          backgroundColor: 'var(--surface, #F9FAF7)',
+          color: 'var(--on-surface, #191D19)',
           paddingTop: '100px',
           paddingBottom: '60px',
         }}
@@ -104,7 +104,7 @@ export default function PassPage() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                color: '#94A3B8',
+                color: 'var(--primary, #1E6B34)',
                 fontSize: '13px',
                 fontWeight: '600',
                 textDecoration: 'none',
@@ -116,19 +116,19 @@ export default function PassPage() {
 
           {isLoading ? (
             <div style={{ textAlign: 'center', padding: '80px 0' }}>
-              <Loader2 size={36} className="spin" style={{ color: '#71BC75', margin: '0 auto' }} />
-              <p style={{ marginTop: '12px', color: '#94A3B8' }}>Loading your daily pass...</p>
+              <Loader2 size={36} className="spin" style={{ color: 'var(--primary, #1E6B34)', margin: '0 auto' }} />
+              <p style={{ marginTop: '12px', color: 'var(--on-surface-variant, #434942)' }}>Loading your daily pass...</p>
             </div>
           ) : !isAuthenticated ? (
             /* Guest Login Prompt */
             <div
               style={{
-                backgroundColor: '#1E293B',
+                backgroundColor: 'var(--surface-lowest, #FFFFFF)',
                 borderRadius: '24px',
                 padding: '40px 24px',
                 textAlign: 'center',
-                boxShadow: '0 10px 30px rgba(0, 0, 0, 0.4)',
-                border: '1px solid #334155',
+                boxShadow: 'var(--elev-1)',
+                border: '1px solid var(--outline-variant, #DCE3DA)',
               }}
             >
               <div
@@ -136,8 +136,8 @@ export default function PassPage() {
                   width: '64px',
                   height: '64px',
                   borderRadius: '20px',
-                  backgroundColor: '#064E3B',
-                  color: '#71BC75',
+                  backgroundColor: 'var(--primary-container, #E0F3E2)',
+                  color: 'var(--primary, #1E6B34)',
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -146,8 +146,10 @@ export default function PassPage() {
               >
                 <QrCode size={32} />
               </div>
-              <h3 style={{ fontSize: '22px', fontWeight: '800', marginBottom: '8px' }}>Daily QR Pass</h3>
-              <p style={{ fontSize: '14px', color: '#94A3B8', lineHeight: '1.5', marginBottom: '24px' }}>
+              <h3 style={{ fontSize: '22px', fontWeight: '800', color: 'var(--on-surface, #191D19)', marginBottom: '8px' }}>
+                Daily QR Pass
+              </h3>
+              <p style={{ fontSize: '14px', color: 'var(--on-surface-variant, #434942)', lineHeight: '1.5', marginBottom: '24px' }}>
                 Sign in with your mobile number to display your live 60-second rotating pass at the stall counter.
               </p>
               <button
@@ -163,17 +165,19 @@ export default function PassPage() {
             /* No Pass Available State */
             <div
               style={{
-                backgroundColor: '#1E293B',
+                backgroundColor: 'var(--surface-lowest, #FFFFFF)',
                 borderRadius: '24px',
                 padding: '40px 24px',
                 textAlign: 'center',
-                boxShadow: '0 10px 30px rgba(0, 0, 0, 0.4)',
-                border: '1px solid #334155',
+                boxShadow: 'var(--elev-1)',
+                border: '1px solid var(--outline-variant, #DCE3DA)',
               }}
             >
-              <AlertCircle size={40} style={{ color: '#F59E0B', margin: '0 auto 12px' }} />
-              <h3 style={{ fontSize: '20px', fontWeight: '700', marginBottom: '6px' }}>No Active Pass Today</h3>
-              <p style={{ fontSize: '13px', color: '#94A3B8', marginBottom: '24px', lineHeight: '1.5' }}>
+              <AlertCircle size={40} style={{ color: 'var(--secondary, #D97706)', margin: '0 auto 12px' }} />
+              <h3 style={{ fontSize: '20px', fontWeight: '700', color: 'var(--on-surface, #191D19)', marginBottom: '6px' }}>
+                No Active Pass Today
+              </h3>
+              <p style={{ fontSize: '13px', color: 'var(--on-surface-variant, #434942)', marginBottom: '24px', lineHeight: '1.5' }}>
                 {error ||
                   'You do not have an active monthly subscription or scheduled pickup order for today.'}
               </p>
@@ -207,11 +211,12 @@ export default function PassPage() {
             /* High Contrast Rotating QR Pass Card */
             <div
               style={{
-                backgroundColor: '#FFFFFF',
+                backgroundColor: 'var(--surface-lowest, #FFFFFF)',
                 borderRadius: '28px',
-                color: '#0F172A',
+                color: 'var(--on-surface, #191D19)',
                 padding: '28px',
-                boxShadow: '0 25px 60px rgba(0, 0, 0, 0.5)',
+                boxShadow: 'var(--elev-2)',
+                border: '1px solid var(--outline-variant, #DCE3DA)',
                 textAlign: 'center',
                 position: 'relative',
               }}
@@ -222,20 +227,20 @@ export default function PassPage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
-                  borderBottom: '1.5px dashed #E2E8F0',
+                  borderBottom: '1.5px dashed var(--outline-variant, #DCE3DA)',
                   paddingBottom: '16px',
                   marginBottom: '20px',
                 }}
               >
                 <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', color: '#64748B' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', color: 'var(--on-surface-variant, #434942)' }}>
                     Nutrients Ocean Stall Pass
                   </div>
-                  <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#0F172A', marginTop: '2px' }}>
+                  <h3 style={{ fontSize: '18px', fontWeight: '800', color: 'var(--on-surface, #191D19)', marginTop: '2px' }}>
                     {passData.planName || 'Daily Fresh Meal'}
                   </h3>
                   {passData.flavor && (
-                    <div style={{ fontSize: '12px', color: '#1E6B34', fontWeight: '600' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--primary, #1E6B34)', fontWeight: '600' }}>
                       Flavor: {passData.flavor}
                     </div>
                   )}
@@ -244,15 +249,15 @@ export default function PassPage() {
                 <div
                   style={{
                     textAlign: 'right',
-                    backgroundColor: '#DCF4E2',
+                    backgroundColor: 'var(--primary-container, #E0F3E2)',
                     padding: '6px 12px',
                     borderRadius: '12px',
                   }}
                 >
-                  <div style={{ fontSize: '10px', fontWeight: '700', color: '#082D12', textTransform: 'uppercase' }}>
+                  <div style={{ fontSize: '10px', fontWeight: '700', color: 'var(--on-primary-container, #002107)', textTransform: 'uppercase' }}>
                     Slot
                   </div>
-                  <div style={{ fontSize: '13px', fontWeight: '800', color: '#1E6B34' }}>{passData.slot}</div>
+                  <div style={{ fontSize: '13px', fontWeight: '800', color: 'var(--primary, #1E6B34)' }}>{passData.slot}</div>
                 </div>
               </div>
 
@@ -295,10 +300,10 @@ export default function PassPage() {
               {/* QR Container */}
               <div
                 style={{
-                  backgroundColor: '#FFFFFF',
+                  backgroundColor: 'var(--surface-lowest, #FFFFFF)',
                   padding: '16px',
                   borderRadius: '20px',
-                  border: '2px solid #0F172A',
+                  border: '2px solid var(--primary, #1E6B34)',
                   display: 'inline-block',
                   margin: '0 auto',
                   filter: passData.statusCode === 'FROZEN' ? 'grayscale(80%) opacity(60%)' : 'none',
@@ -331,11 +336,11 @@ export default function PassPage() {
                     gap: '6px',
                     fontSize: '12px',
                     fontWeight: '600',
-                    color: '#64748B',
+                    color: 'var(--on-surface-variant, #434942)',
                     marginBottom: '6px',
                   }}
                 >
-                  <Clock size={14} style={{ color: '#1E6B34' }} />
+                  <Clock size={14} style={{ color: 'var(--primary, #1E6B34)' }} />
                   <span>Refreshes in {secondsRemaining}s</span>
                 </div>
 
@@ -343,7 +348,7 @@ export default function PassPage() {
                   style={{
                     height: '6px',
                     width: '100%',
-                    backgroundColor: '#E2E8F0',
+                    backgroundColor: 'var(--surface-high, #E1E6DD)',
                     borderRadius: '999px',
                     overflow: 'hidden',
                   }}
@@ -352,7 +357,7 @@ export default function PassPage() {
                     style={{
                       height: '100%',
                       width: `${(secondsRemaining / 60) * 100}%`,
-                      backgroundColor: '#1E6B34',
+                      backgroundColor: 'var(--primary, #1E6B34)',
                       transition: 'width 1s linear',
                     }}
                   />
@@ -369,9 +374,9 @@ export default function PassPage() {
                     style={{
                       width: '100%',
                       padding: '12px',
-                      backgroundColor: '#2563EB',
+                      backgroundColor: 'var(--primary, #1E6B34)',
                       color: '#FFFFFF',
-                      borderRadius: '12px',
+                      borderRadius: 'var(--shape-md, 16px)',
                       fontSize: '13px',
                       fontWeight: '700',
                       border: 'none',
@@ -400,20 +405,20 @@ export default function PassPage() {
                 style={{
                   marginTop: '20px',
                   paddingTop: '16px',
-                  borderTop: '1.5px dashed #E2E8F0',
+                  borderTop: '1.5px dashed var(--outline-variant, #DCE3DA)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   fontSize: '12px',
-                  color: '#475569',
+                  color: 'var(--on-surface-variant, #434942)',
                 }}
               >
                 <div>
-                  Member: <strong style={{ color: '#0F172A' }}>{customer?.phone}</strong>
+                  Member: <strong style={{ color: 'var(--on-surface, #191D19)' }}>{customer?.phone}</strong>
                 </div>
                 <div>
                   Serving:{' '}
-                  <strong style={{ color: '#1E6B34' }}>
+                  <strong style={{ color: 'var(--primary, #1E6B34)' }}>
                     {passData.servingsUsed || 0} of {passData.totalServings || 30}
                   </strong>
                 </div>
@@ -424,7 +429,7 @@ export default function PassPage() {
                 style={{
                   marginTop: '16px',
                   fontSize: '11px',
-                  color: '#94A3B8',
+                  color: 'var(--on-surface-variant, #434942)',
                   lineHeight: '1.4',
                 }}
               >

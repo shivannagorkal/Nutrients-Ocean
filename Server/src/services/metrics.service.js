@@ -31,10 +31,16 @@ export function calculateSales(salesRows = []) {
 }
 
 /**
- * Orders: Count of sales rows.
+ * Orders: Count of distinct customer orders.
+ * Rows sharing an order_group_id are counted as a single customer order.
  */
 export function calculateOrders(salesRows = []) {
-  return salesRows.length;
+  if (!salesRows || salesRows.length === 0) return 0;
+  const uniqueOrders = new Set();
+  for (const row of salesRows) {
+    uniqueOrders.add(row.order_group_id || row.id);
+  }
+  return uniqueOrders.size;
 }
 
 /**

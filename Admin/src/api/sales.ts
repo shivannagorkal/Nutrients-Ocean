@@ -19,6 +19,10 @@ export interface SaleRecord {
   updated_at: string;
   product_name?: string;
   received_by_name?: string;
+  order_group_id?: string | null;
+  receipt_number?: string | null;
+  customer_name?: string | null;
+  customer_phone?: string | null;
 }
 
 export interface SalesResponse {
@@ -111,6 +115,40 @@ export function useSalesDashboard(params: { from?: string; to?: string; group?: 
     queryFn: async () => {
       const res: any = await api.get('/sales', { params });
       return res;
+    },
+  });
+}
+
+export interface SaleOrderItem {
+  product_id: string;
+  quantity: number;
+  price_per_item?: number | null;
+  total_amount?: number;
+  notes?: string | null;
+}
+
+export interface CreateSaleOrderPayload {
+  sale_date: string;
+  payment_method: 'UPI' | 'Cash';
+  received_by: string;
+  customer_name?: string | null;
+  customer_phone?: string | null;
+  notes?: string | null;
+  items: SaleOrderItem[];
+}
+
+export function useCreateSaleOrder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: CreateSaleOrderPayload) => {
+      const res: any = await api.post('/sales/order', data);
+      return res;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['sales-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['today'] });
+      queryClient.invalidateQueries({ queryKey: ['overview'] });
     },
   });
 }

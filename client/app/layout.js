@@ -5,6 +5,7 @@ import { CustomerAuthProvider } from "@/context/CustomerAuthContext";
 import { CartProvider } from "@/context/CartContext";
 import AuthModal from "@/components/AuthModal";
 import CartDrawer from "@/components/CartDrawer";
+import FloatingCartBar from "@/components/FloatingCartBar";
 
 const atures = localFont({
   src: [
@@ -48,6 +49,7 @@ export default function RootLayout({ children }) {
             {children}
             <AuthModal />
             <CartDrawer />
+            <FloatingCartBar />
           </CartProvider>
         </CustomerAuthProvider>
       </body>

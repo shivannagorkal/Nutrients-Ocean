@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
+import { calculateDeliveryFeeDetails, getCurrentUserLocation, STALL_COORDINATES } from '@/lib/geo';
 
 const CartContext = createContext(null);
 
@@ -8,9 +9,16 @@ export function CartProvider({ children }) {
   const [items, setItems] = useState([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [fulfillmentType, setFulfillmentType] = useState('PICKUP'); // 'PICKUP' | 'DELIVERY'
-  const [deliveryBracket, setDeliveryBracket] = useState('NONE'); // 'NONE' | 'M0_500' | 'M501_1000' | 'M1001_2000'
+  const [deliveryBracket, setDeliveryBracket] = useState('M0_500'); // 'M0_500' | 'M501_1000' | 'M1001_2000'
   const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [collectionSlot, setCollectionSlot] = useState('MORNING'); // 'MORNING' | 'EVENING'
+  const [collectionSlot, setCollectionSlot] = useState('MORNING'); // 'MORNING' (6:30 - 8:20 AM) | 'EVENING' (5:00 - 9:30 PM)
+
+  // Location detection state
+  const [userLat, setUserLat] = useState(null);
+  const [userLng, setUserLng] = useState(null);
+  const [distanceMeters, setDistanceMeters] = useState(null);
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [locationError, setLocationError] = useState(null);
 
   // Load cart from localStorage on mount
   useEffect(() => {
@@ -91,6 +99,60 @@ export function CartProvider({ children }) {
     setItems([]);
   };
 
+  const getItemQuantity = useCallback(
+    (productId, flavor = null) => {
+      const match = items.find(
+        (it) => it.productId === productId && (it.flavor || null) === (flavor || null)
+      );
+      return match ? match.quantity : 0;
+    },
+    [items]
+  );
+
+  const setCustomLocation = useCallback((lat, lng, distMeters) => {
+    setUserLat(lat);
+    setUserLng(lng);
+    setDistanceMeters(distMeters);
+
+    if (distMeters <= 500) {
+      setDeliveryBracket('M0_500');
+    } else if (distMeters <= 1000) {
+      setDeliveryBracket('M501_1000');
+    } else if (distMeters <= 2000) {
+      setDeliveryBracket('M1001_2000');
+    } else {
+      setDeliveryBracket('OUT_OF_RANGE');
+    }
+  }, []);
+
+  const detectLocation = useCallback(async () => {
+    setIsDetectingLocation(true);
+    setLocationError(null);
+    try {
+      const loc = await getCurrentUserLocation();
+      setUserLat(loc.latitude);
+      setUserLng(loc.longitude);
+      setDistanceMeters(loc.distanceMeters);
+
+      // Auto assign bracket
+      if (loc.distanceMeters <= 500) {
+        setDeliveryBracket('M0_500');
+      } else if (loc.distanceMeters <= 1000) {
+        setDeliveryBracket('M501_1000');
+      } else if (loc.distanceMeters <= 2000) {
+        setDeliveryBracket('M1001_2000');
+      } else {
+        setDeliveryBracket('OUT_OF_RANGE');
+      }
+      return loc;
+    } catch (err) {
+      setLocationError(err.message || 'Could not detect location');
+      throw err;
+    } finally {
+      setIsDetectingLocation(false);
+    }
+  }, []);
+
   const itemCount = useMemo(() => {
     return items.reduce((sum, it) => sum + it.quantity, 0);
   }, [items]);
@@ -99,20 +161,24 @@ export function CartProvider({ children }) {
     return items.reduce((sum, it) => sum + it.pricePaise * it.quantity, 0);
   }, [items]);
 
-  const deliveryFeePaise = useMemo(() => {
-    if (fulfillmentType === 'PICKUP') return 0;
-    switch (deliveryBracket) {
-      case 'M0_500':
-        return 500; // ₹5
-      case 'M501_1000':
-        return 1000; // ₹10
-      case 'M1001_2000':
-        return 1500; // ₹15
-      default:
-        return 0;
-    }
-  }, [fulfillmentType, deliveryBracket]);
+  const subtotalRupees = Math.round(subtotalPaise / 100);
 
+  // Live delivery calculations with conditional free delivery thresholds (₹159 & ₹359)
+  const deliveryDetails = useMemo(() => {
+    if (fulfillmentType === 'PICKUP') {
+      return {
+        feeRupees: 0,
+        feePaise: 0,
+        isFree: true,
+        outOfRange: false,
+        label: 'Stall Pickup (FREE)',
+        neededForFree: 0,
+      };
+    }
+    return calculateDeliveryFeeDetails(distanceMeters, subtotalRupees);
+  }, [fulfillmentType, distanceMeters, subtotalRupees]);
+
+  const deliveryFeePaise = deliveryDetails.feePaise;
   const totalPaise = subtotalPaise + deliveryFeePaise;
 
   return (
@@ -126,9 +192,12 @@ export function CartProvider({ children }) {
         removeItem,
         updateQuantity,
         clearCart,
+        getItemQuantity,
         itemCount,
         subtotalPaise,
+        subtotalRupees,
         deliveryFeePaise,
+        deliveryDetails,
         totalPaise,
         fulfillmentType,
         setFulfillmentType,
@@ -138,6 +207,14 @@ export function CartProvider({ children }) {
         setDeliveryAddress,
         collectionSlot,
         setCollectionSlot,
+        userLat,
+        userLng,
+        distanceMeters,
+        setCustomLocation,
+        detectLocation,
+        isDetectingLocation,
+        locationError,
+        stallCoordinates: STALL_COORDINATES,
       }}
     >
       {children}

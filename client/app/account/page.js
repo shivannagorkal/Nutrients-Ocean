@@ -178,14 +178,21 @@ export default function AccountPage() {
                 Sign in with your mobile number to view your active 30-day meal subscriptions, unlimited freeze calendar,
                 and rotating stall QR pass.
               </p>
-              <button
-                type="button"
+              <Link
+                href="/login?redirect=/account"
                 className="btn btn-primary"
-                onClick={() => openAuthModal()}
-                style={{ padding: '14px 28px', fontSize: '15px', fontWeight: '700' }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  padding: "14px 28px",
+                  fontSize: "15px",
+                  fontWeight: "700",
+                  textDecoration: "none",
+                }}
               >
                 Sign In with Mobile
-              </button>
+              </Link>
             </div>
           ) : (
             /* Authenticated Portal */
@@ -603,52 +610,62 @@ export default function AccountPage() {
                         key={ord.id}
                         style={{
                           border: '1px solid #E2E8F0',
-                          borderRadius: '12px',
+                          borderRadius: '16px',
                           padding: '16px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
                           flexWrap: 'wrap',
                           gap: '12px',
+                          backgroundColor: '#FAFAFA',
                         }}
                       >
                         <div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                            <strong style={{ fontSize: '14px', color: '#0F172A' }}>{ord.orderNumber}</strong>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                            <strong style={{ fontSize: '15px', color: '#0F172A' }}>
+                              #{ord.order_number || ord.orderNumber || ord.id.slice(0, 8)}
+                            </strong>
                             <span
                               style={{
                                 fontSize: '11px',
                                 fontWeight: '700',
-                                padding: '2px 8px',
+                                padding: '3px 10px',
                                 borderRadius: '999px',
                                 backgroundColor:
-                                  ord.orderStatus === 'COMPLETED'
+                                  (ord.order_status || ord.orderStatus) === 'DELIVERED' || (ord.order_status || ord.orderStatus) === 'COMPLETED'
                                     ? '#DCFCE7'
-                                    : ord.orderStatus === 'CANCELLED'
+                                    : (ord.order_status || ord.orderStatus) === 'CANCELLED'
                                     ? '#FEE2E2'
+                                    : (ord.order_status || ord.orderStatus) === 'READY'
+                                    ? '#E0F2FE'
                                     : '#FEF3C7',
                                 color:
-                                  ord.orderStatus === 'COMPLETED'
+                                  (ord.order_status || ord.orderStatus) === 'DELIVERED' || (ord.order_status || ord.orderStatus) === 'COMPLETED'
                                     ? '#15803D'
-                                    : ord.orderStatus === 'CANCELLED'
+                                    : (ord.order_status || ord.orderStatus) === 'CANCELLED'
                                     ? '#991B1B'
+                                    : (ord.order_status || ord.orderStatus) === 'READY'
+                                    ? '#0284C7'
                                     : '#B45309',
                               }}
                             >
-                              {ord.orderStatus}
+                              {ord.order_status || ord.orderStatus}
                             </span>
                           </div>
-                          <div style={{ fontSize: '12px', color: '#64748B' }}>
-                            {ord.items?.map((it) => `${it.itemName} (${it.quantity})`).join(', ')}
+                          <div style={{ fontSize: '13px', color: '#475569', marginBottom: '4px' }}>
+                            {ord.items?.map((it) => `${it.product_name || it.name || it.itemName || 'Meal'} (${it.quantity})`).join(', ')}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#64748B' }}>
+                            {ord.fulfillment_type || ord.fulfillmentType} • {ord.collection_slot === 'MORNING' ? 'Morning (6:30 - 8:20 AM)' : 'Evening (5:00 - 9:30 PM)'}
                           </div>
                         </div>
 
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '15px', fontWeight: '800', color: '#1E6B34' }}>
-                            ₹{(Number(ord.totalPaise) / 100).toFixed(2)}
+                          <div style={{ fontSize: '16px', fontWeight: '800', color: '#1E6B34' }}>
+                            ₹{((Number(ord.total_paise || ord.totalPaise || 0)) / 100).toFixed(0)}
                           </div>
-                          <div style={{ fontSize: '11px', color: '#64748B' }}>
-                            {ord.fulfillmentType} • {ord.collectionSlot}
+                          <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>
+                            {ord.payment_method === 'UPI_DIRECT' ? 'Direct UPI' : ord.payment_method === 'PAY_AT_STALL' ? 'Pay at Stall' : 'Razorpay'}
                           </div>
                         </div>
                       </div>

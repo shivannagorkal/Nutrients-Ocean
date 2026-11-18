@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, Clock, Info, Phone, Search, Utensils, X, ShoppingBag } from "lucide-react";
+import { Check, Clock, Info, Phone, Search, Utensils, X, ShoppingBag, Plus, Minus } from "lucide-react";
 import siteData from "@/data/siteData";
 import { WhatsAppIcon } from "./SocialIcons";
 import { useCart } from "@/context/CartContext";
@@ -26,7 +26,7 @@ export default function MenuExplorer() {
   const whatsappNumber = contact.whatsappNumber || contact.phoneRaw.replace(/\D/g, "");
   const telHref = `tel:${contact.phoneRaw}`;
 
-  const { addItem } = useCart();
+  const { addItem, getItemQuantity, updateQuantity } = useCart();
 
   const [activeCategory, setActiveCategory] = useState("All");
   const [query, setQuery] = useState("");
@@ -327,15 +327,83 @@ export default function MenuExplorer() {
                   )}
 
                   <div className="menupage-card-actions" style={{ gap: "6px" }}>
-                    <button
-                      type="button"
-                      className="btn btn-primary btn-sm"
-                      onClick={() => handleAddToCart(item)}
-                      style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
-                    >
-                      <ShoppingBag size={15} />
-                      <span>Add to Cart</span>
-                    </button>
+                    {getItemQuantity(item.productId, selectedFlavor) === 0 ? (
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        onClick={() => handleAddToCart(item)}
+                        style={{
+                          flex: 1,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: "6px",
+                          fontWeight: "700",
+                          height: "38px",
+                          borderRadius: "9999px",
+                        }}
+                      >
+                        <Plus size={15} />
+                        <span>ADD</span>
+                      </button>
+                    ) : (
+                      <div
+                        style={{
+                          flex: 1,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          backgroundColor: "#E0F3E2",
+                          border: "1.5px solid #1E6B34",
+                          borderRadius: "9999px",
+                          padding: "2px 8px",
+                          height: "38px",
+                          boxSizing: "border-box",
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cur = getItemQuantity(item.productId, selectedFlavor);
+                            updateQuantity(item.productId, selectedFlavor, cur - 1);
+                          }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#1E6B34",
+                            cursor: "pointer",
+                            padding: "4px 8px",
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                          aria-label="Decrease quantity"
+                        >
+                          <Minus size={14} />
+                        </button>
+                        <span style={{ fontSize: "14px", fontWeight: "800", color: "#002107" }}>
+                          {getItemQuantity(item.productId, selectedFlavor)}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const cur = getItemQuantity(item.productId, selectedFlavor);
+                            updateQuantity(item.productId, selectedFlavor, cur + 1);
+                          }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            color: "#1E6B34",
+                            cursor: "pointer",
+                            padding: "4px 8px",
+                            display: "flex",
+                            alignItems: "center",
+                          }}
+                          aria-label="Increase quantity"
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
+                    )}
                     <button
                       type="button"
                       className="btn btn-outline btn-sm menupage-details-btn"

@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { env } from '../config/env.js';
 import { AppError } from '../utils/appError.js';
+import { isOriginAllowed } from '../utils/origin.js';
 
 export const SESSION_COOKIE_NAME = 'session';
 
@@ -61,8 +62,18 @@ export function csrfProtection(req, res, next) {
     return next();
   }
 
-  // Exempt public login route from CSRF check (first request sets the cookie)
-  if (req.path === '/api/auth/login' || req.path === '/auth/login') {
+  // Exempt public auth routes from CSRF check (first requests before session established)
+  if (
+    req.path === '/api/auth/login' ||
+    req.path === '/auth/login' ||
+    req.path.startsWith('/customer/auth') ||
+    req.path.startsWith('/api/customer/auth')
+  ) {
+    return next();
+  }
+
+  // Requests authenticated via explicit Authorization Bearer tokens are safe from browser cookie CSRF
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
     return next();
   }
 
@@ -80,9 +91,9 @@ export function csrfProtection(req, res, next) {
     .filter(Boolean);
 
   let isValid = false;
-  if (origin && (allowedOrigins.length === 0 || allowedOrigins.includes(origin) || allowedOrigins.includes('*'))) {
+  if (origin && isOriginAllowed(origin, allowedOrigins)) {
     isValid = true;
-  } else if (referer && (allowedOrigins.length === 0 || allowedOrigins.some((o) => referer.startsWith(o)) || allowedOrigins.includes('*'))) {
+  } else if (referer && isOriginAllowed(referer, allowedOrigins)) {
     isValid = true;
   }
 

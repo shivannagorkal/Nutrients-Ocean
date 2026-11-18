@@ -18,6 +18,8 @@ export interface ExpenseRecord {
   updated_at: string;
   category_name?: string;
   paid_by_name?: string;
+  expense_group_id?: string | null;
+  receipt_number?: string | null;
 }
 
 export interface ExpensesResponse {
@@ -107,6 +109,39 @@ export function useExpensesDashboard(params: { from?: string; to?: string; group
     queryFn: async () => {
       const res: any = await api.get('/expenses', { params });
       return res;
+    },
+  });
+}
+
+export interface ExpenseBillItem {
+  category_id: string;
+  description: string;
+  amount: number;
+  notes?: string | null;
+}
+
+export interface CreateExpenseBillPayload {
+  expense_date: string;
+  expense_type: 'Regular Business Expense' | 'Initial Investment';
+  payment_method: 'UPI' | 'Cash' | 'Personal Payment';
+  paid_by: string;
+  notes?: string | null;
+  items: ExpenseBillItem[];
+}
+
+export function useCreateExpenseBill() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: CreateExpenseBillPayload) => {
+      const res: any = await api.post('/expenses/bill', data);
+      return res;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['expenses-dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['today'] });
+      queryClient.invalidateQueries({ queryKey: ['partners'] });
+      queryClient.invalidateQueries({ queryKey: ['overview'] });
     },
   });
 }

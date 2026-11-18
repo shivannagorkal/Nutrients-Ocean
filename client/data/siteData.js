@@ -17,9 +17,9 @@ const siteData = {
 
   contact: {
     phoneDisplay: "+91 70199 93154",
-    phoneRaw: "+917019993154",
-    whatsappNumber: "917019993154",
-    enquiryPhones: ["7019993154", "9482705834", "8073176142"],
+    phoneRaw: "+919482705834",
+    whatsappNumber: "919482705834",
+    enquiryPhones: ["9482705834", "7019993154", "8073176142"],
     email: "support@fitmitra.in",
   },
 
@@ -49,8 +49,8 @@ const siteData = {
     mapPhoto: "/images/google-map.jpg",
     mapsEmbedUrl: "", // OPTIONAL: paste a Google Maps "Embed a map" src URL here to show a live map
     timings: [
-      { label: "Morning", time: "6:00 AM - 8:00 AM" },
-      { label: "Evening", time: "5:00 PM - 8:00 PM" },
+      { label: "Morning", time: "6:30 AM - 8:15 AM" },
+      { label: "Evening", time: "5:30 PM - 8:30 PM" },
     ],
   },
 
@@ -94,7 +94,7 @@ const siteData = {
         tag: "Snacks",
         isVeg: true,
         description: "Wholesome bread layered with fresh banana slices and creamy peanut butter.",
-        ingredients: ["Bread", "Banana", "Peanut Butter"],
+        ingredients: ["Bread", "Banana", "Peanut Butter", "Honey", "flavour"],
         price: "₹49",
         // OPTIONAL nutrition/prep fields: protein: "12g", calories: "310 kcal", prepTime: "5 mins"
         image: "/images/peanut_banana_sandwich.png",
@@ -105,7 +105,7 @@ const siteData = {
         tag: "Snacks",
         isVeg: true,
         description: "Bread layered with banana, peanut butter, dry fruits, honey and chocolate syrup.",
-        ingredients: ["Bread", "Banana", "Peanut Butter", "Dry Fruits", "Honey", "Chocolate Syrup"],
+        ingredients: ["Bread", "Banana", "Peanut Butter", "Dry Fruits", "seeds", "fruits", "Honey", "Chocolate Syrup"],
         price: "₹59",
         image: "/images/dryfruits_sandwich.png",
       },
@@ -126,6 +126,7 @@ const siteData = {
           "Apple",
           "Pomegranate",
           "Honey",
+          "flavour",
         ],
         price: "₹99",
         flavors: ["Strawberry", "Chocolate"],
@@ -147,7 +148,7 @@ const siteData = {
           "Chocolate Syrup",
           "Dry Fruits",
           "Seeds (Pumpkin, Sunflower, Chia)",
-          "Fruits (Seasonal)",
+          "Fruits",
         ],
         price: "₹79",
         flavors: ["Strawberry", "Chocolate"],
@@ -349,8 +350,8 @@ const siteData = {
         },
         {
           icon: "Zap",
-          title: "FitMitra +5 ⚡ rewards loop",
-          text: "Track workouts in the FitMitra app to earn +5 reward points per session redeemable for stall discounts.",
+          title: "Nexvyro Fitness +5 ⚡ rewards loop",
+          text: "Track workouts in the Nexvyro Fitness app to earn +5 reward points per session redeemable for stall discounts.",
         },
         {
           icon: "CheckCircle2",
@@ -380,7 +381,7 @@ const siteData = {
 
   app: {
     badge: "Mobile Ecosystem",
-    name: "FitMitra Mobile App",
+    name: "Nexvyro Fitness Mobile App",
     tagline: "Your Bilingual Workout Trainer & Fuel Companion",
     description: "Designed specifically to complement your daily training and stall pickup routine. Track your workouts, earn ⚡ Reward Points, get instant AI guidance in Kannada and English, and manage your nutrition effortlessly.",
     image: "/images/app-preview.jpg",
@@ -427,9 +428,9 @@ const siteData = {
     title: "Meet the team",
     subtitle: "Three students, one goal: better fuel for your training.",
     members: [
-      { name: "Sachin Kumar", role: "Founder", photo: "/images/sachinkumar.jpg" }, // TODO
-      { name: "Shivanna", role: "Co-founder", photo: "/images/shivanna.jpg" }, // TODO
-      { name: "Team Member 3", role: "Co-founder", photo: "/images/uday.jpg" }, // TODO
+      { name: "Sachin Kumar", role: "Managing Partner", photo: "/images/sachinkumar.jpg" }, // TODO
+      { name: "Shivanna", role: "Head of Operations", photo: "/images/shivanna.jpg" }, // TODO
+      { name: "Uday K S", role: "Head of Culinary", photo: "/images/uday.jpg" }, // TODO
     ],
   },
 };

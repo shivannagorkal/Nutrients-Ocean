@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 class ApiClient {
   constructor() {
@@ -7,15 +7,20 @@ class ApiClient {
 
   getToken() {
     if (typeof window === 'undefined') return null;
-    return localStorage.getItem('customerAccessToken');
+    const local = localStorage.getItem('customerAccessToken');
+    if (local) return local;
+    const match = document.cookie.match(new RegExp('(^| )customerAccessToken=([^;]+)'));
+    return match ? decodeURIComponent(match[2]) : null;
   }
 
   setToken(token) {
     if (typeof window === 'undefined') return;
     if (token) {
       localStorage.setItem('customerAccessToken', token);
+      document.cookie = `customerAccessToken=${encodeURIComponent(token)}; path=/; max-age=2592000; SameSite=Lax`;
     } else {
       localStorage.removeItem('customerAccessToken');
+      document.cookie = 'customerAccessToken=; path=/; max-age=0; SameSite=Lax';
     }
   }
 
@@ -51,32 +56,40 @@ class ApiClient {
     return json.data;
   }
 
-  // --- Auth ---
-  async loginWithPhone(phone, firebaseIdToken = null) {
-    const data = await this.request('/customer/auth/firebase', {
+  // --- Auth (Mobile + Password) ---
+  async registerCustomer({ phone, fullName, password }) {
+    const data = await this.request('/customer/auth/register', {
       method: 'POST',
-      body: JSON.stringify({
-        phone,
-        firebaseIdToken: firebaseIdToken || `test_token_${phone.replace(/\D/g, '')}`,
-      }),
+      body: JSON.stringify({ phone, fullName, password }),
     });
-    if (data?.accessToken) {
-      this.setToken(data.accessToken);
+    if (data?.token) {
+      this.setToken(data.token);
+    }
+    return data;
+  }
+
+  async loginCustomer({ phone, password }) {
+    const data = await this.request('/customer/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ phone, password }),
+    });
+    if (data?.token) {
+      this.setToken(data.token);
     }
     return data;
   }
 
   async getProfile() {
-    return this.request('/customer/profile');
+    return this.request('/customer/auth/me');
   }
 
   async logout() {
-    try {
-      await this.request('/customer/logout', { method: 'POST' });
-    } catch {
-      // Ignore network errors on logout
-    }
     this.setToken(null);
+  }
+
+  // Backwards compatibility alias
+  async loginWithPhone(phone, password = '') {
+    return this.loginCustomer({ phone, password });
   }
 
   // --- Catalog ---

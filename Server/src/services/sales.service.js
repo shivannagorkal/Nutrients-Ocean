@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { pool } from '../db/index.js';
 import { AppError } from '../utils/appError.js';
 import { recordAudit } from './audit.service.js';
@@ -96,6 +97,149 @@ export class SalesService {
     });
 
     return createdRecord;
+  }
+
+  /**
+   * Create a multi-item sale order
+   */
+  static async createSaleOrder(data, userEmail) {
+    const {
+      sale_date,
+      payment_method,
+      received_by,
+      customer_name = null,
+      customer_phone = null,
+      notes = null,
+      items = [],
+    } = data;
+
+    if (!items || items.length === 0) {
+      throw new AppError('Order must contain at least one item', 400, 'EMPTY_ORDER');
+    }
+
+    // Verify received_by member exists
+    const memberRes = await pool.query('SELECT id, name FROM members WHERE id = $1;', [received_by]);
+    if (memberRes.rows.length === 0) {
+      throw new AppError('Received by member not found', 400, 'MEMBER_NOT_FOUND');
+    }
+
+    // Fetch and validate all products
+    const productIds = items.map((it) => it.product_id);
+    const prodRes = await pool.query(
+      'SELECT id, name, default_price FROM products WHERE id = ANY($1::uuid[]) AND is_active = true;',
+      [productIds]
+    );
+    const productMap = new Map(prodRes.rows.map((p) => [p.id, p]));
+
+    for (const it of items) {
+      const prod = productMap.get(it.product_id);
+      if (!prod) {
+        throw new AppError(`Product with ID ${it.product_id} not found or is inactive`, 400, 'PRODUCT_NOT_FOUND');
+      }
+      const isMixed = prod.name.toLowerCase() === 'other';
+      const itemNotes = it.notes || notes;
+      if (isMixed && (!itemNotes || itemNotes.trim().length < 3)) {
+        throw new AppError(
+          'Notes are required (minimum 3 characters) when product is "Other"',
+          400,
+          'VALIDATION_ERROR'
+        );
+      }
+    }
+
+    // Generate shared order_group_id and receipt number
+    const orderGroupId = crypto.randomUUID();
+    const d = new Date();
+    const datePart = d.toISOString().slice(2, 10).replace(/-/g, '');
+    const rand = Math.floor(100 + Math.random() * 900);
+    const receiptNumber = `NO-SAL-${datePart}-${rand}`;
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const insertedRecords = [];
+      let totalOrderAmount = 0;
+
+      for (const it of items) {
+        const prod = productMap.get(it.product_id);
+        const isMixed = prod.name.toLowerCase() === 'other';
+        const qty = parseInt(it.quantity, 10) || 1;
+        const pricePerItem =
+          it.price_per_item !== undefined && it.price_per_item !== null
+            ? Number(it.price_per_item)
+            : Number(prod.default_price);
+        const lineTotal =
+          it.total_amount !== undefined && it.total_amount !== null
+            ? Number(it.total_amount)
+            : qty * pricePerItem;
+
+        totalOrderAmount += lineTotal;
+
+        const insertQuery = `
+          INSERT INTO sales (
+            sale_date, product_id, quantity, price_per_item, total_amount,
+            payment_method, received_by, notes, is_mixed, source, created_by,
+            order_group_id, receipt_number, customer_name, customer_phone
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'app', $10, $11, $12, $13, $14)
+          RETURNING *;
+        `;
+
+        const res = await client.query(insertQuery, [
+          sale_date,
+          it.product_id,
+          qty,
+          pricePerItem,
+          lineTotal,
+          payment_method,
+          received_by,
+          it.notes ? it.notes.trim() : (notes ? notes.trim() : null),
+          isMixed,
+          userEmail,
+          orderGroupId,
+          receiptNumber,
+          customer_name ? customer_name.trim() : null,
+          customer_phone ? customer_phone.trim() : null,
+        ]);
+
+        const record = res.rows[0];
+        record.price_per_item = record.price_per_item ? parseFloat(record.price_per_item) : null;
+        record.total_amount = parseFloat(record.total_amount);
+        insertedRecords.push(record);
+      }
+
+      await client.query('COMMIT');
+
+      // Audit log for bulk order
+      await recordAudit({
+        userEmail,
+        action: 'create_order',
+        entity: 'sales',
+        entityId: orderGroupId,
+        after: {
+          order_group_id: orderGroupId,
+          receipt_number: receiptNumber,
+          total_amount: totalOrderAmount,
+          items_count: insertedRecords.length,
+          customer_name,
+          customer_phone,
+        },
+      });
+
+      return {
+        order_group_id: orderGroupId,
+        receipt_number: receiptNumber,
+        total_amount: totalOrderAmount,
+        items_count: insertedRecords.length,
+        records: insertedRecords,
+      };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   /**

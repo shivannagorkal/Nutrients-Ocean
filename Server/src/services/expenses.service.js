@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { pool } from '../db/index.js';
 import { AppError } from '../utils/appError.js';
 import { recordAudit } from './audit.service.js';
@@ -64,6 +65,119 @@ export class ExpensesService {
     });
 
     return createdRecord;
+  }
+
+  /**
+   * Create a multi-item expense bill
+   */
+  static async createExpenseBill(data, userEmail) {
+    const {
+      expense_date,
+      expense_type,
+      payment_method,
+      paid_by,
+      notes = null,
+      items = [],
+    } = data;
+
+    if (!items || items.length === 0) {
+      throw new AppError('Bill must contain at least one expense line', 400, 'EMPTY_EXPENSE_BILL');
+    }
+
+    // Verify paid_by member exists
+    const memRes = await pool.query('SELECT id, name FROM members WHERE id = $1;', [paid_by]);
+    if (memRes.rows.length === 0) {
+      throw new AppError('Paid by member not found', 400, 'MEMBER_NOT_FOUND');
+    }
+
+    // Verify categories exist
+    const categoryIds = items.map((it) => it.category_id);
+    const catRes = await pool.query(
+      'SELECT id, name FROM expense_categories WHERE id = ANY($1::uuid[]);',
+      [categoryIds]
+    );
+    const categoryMap = new Map(catRes.rows.map((c) => [c.id, c]));
+
+    for (const it of items) {
+      if (!categoryMap.has(it.category_id)) {
+        throw new AppError(`Category with ID ${it.category_id} not found`, 400, 'CATEGORY_NOT_FOUND');
+      }
+    }
+
+    const expenseGroupId = crypto.randomUUID();
+    const d = new Date();
+    const datePart = d.toISOString().slice(2, 10).replace(/-/g, '');
+    const rand = Math.floor(100 + Math.random() * 900);
+    const receiptNumber = `NO-EXP-${datePart}-${rand}`;
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const insertedRecords = [];
+      let totalBillAmount = 0;
+
+      for (const it of items) {
+        const amt = parseFloat(it.amount);
+        totalBillAmount += amt;
+
+        const insertQuery = `
+          INSERT INTO expenses (
+            expense_date, category_id, description, amount, payment_method,
+            paid_by, expense_type, notes, source, created_by,
+            expense_group_id, receipt_number
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'app', $9, $10, $11)
+          RETURNING *;
+        `;
+
+        const res = await client.query(insertQuery, [
+          expense_date,
+          it.category_id,
+          it.description.trim(),
+          amt,
+          payment_method,
+          paid_by,
+          expense_type,
+          it.notes ? it.notes.trim() : (notes ? notes.trim() : null),
+          userEmail,
+          expenseGroupId,
+          receiptNumber,
+        ]);
+
+        const record = res.rows[0];
+        record.amount = parseFloat(record.amount);
+        insertedRecords.push(record);
+      }
+
+      await client.query('COMMIT');
+
+      await recordAudit({
+        userEmail,
+        action: 'create_bill',
+        entity: 'expenses',
+        entityId: expenseGroupId,
+        after: {
+          expense_group_id: expenseGroupId,
+          receipt_number: receiptNumber,
+          total_amount: totalBillAmount,
+          items_count: insertedRecords.length,
+        },
+      });
+
+      return {
+        expense_group_id: expenseGroupId,
+        receipt_number: receiptNumber,
+        total_amount: totalBillAmount,
+        items_count: insertedRecords.length,
+        records: insertedRecords,
+      };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 
   /**

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import api from '@/lib/api';
 
 const CustomerAuthContext = createContext(null);
@@ -11,6 +12,9 @@ export function CustomerAuthProvider({ children }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authSuccessCallback, setAuthSuccessCallback] = useState(null);
+
+  const pathname = usePathname();
+  const router = useRouter();
 
   const refreshProfile = useCallback(async () => {
     const storedToken = api.getToken();
@@ -41,6 +45,22 @@ export function CustomerAuthProvider({ children }) {
     refreshProfile();
   }, [refreshProfile]);
 
+  // Client-side route guard:
+  // 1. Authenticated users cannot access guest-only routes (/, /login, /register)
+  // 2. Unauthenticated guests cannot access protected routes (/account)
+  useEffect(() => {
+    if (isLoading || !pathname) return;
+
+    const guestOnlyRoutes = ['/', '/login', '/register'];
+    const protectedRoutes = ['/account'];
+
+    if (customer && guestOnlyRoutes.includes(pathname)) {
+      router.replace('/menu');
+    } else if (!customer && protectedRoutes.some((r) => pathname.startsWith(r))) {
+      router.replace(`/login?redirect=${encodeURIComponent(pathname)}`);
+    }
+  }, [customer, isLoading, pathname, router]);
+
   const openAuthModal = useCallback((callback = null) => {
     setAuthSuccessCallback(() => callback);
     setIsAuthModalOpen(true);
@@ -51,25 +71,46 @@ export function CustomerAuthProvider({ children }) {
     setAuthSuccessCallback(null);
   }, []);
 
-  const login = async (phone, firebaseIdToken = null) => {
-    const data = await api.loginWithPhone(phone, firebaseIdToken);
-    setToken(data.accessToken);
-    const profile = await api.getProfile();
-    setCustomer(profile);
+  const login = async (phone, password) => {
+    const data = await api.loginCustomer({ phone, password });
+    setToken(data.token);
+    setCustomer(data.customer);
     setIsAuthModalOpen(false);
 
     if (authSuccessCallback && typeof authSuccessCallback === 'function') {
-      authSuccessCallback(profile);
+      authSuccessCallback(data.customer);
       setAuthSuccessCallback(null);
     }
 
-    return profile;
+    return data.customer;
+  };
+
+  const register = async (phone, fullName, password) => {
+    const data = await api.registerCustomer({ phone, fullName, password });
+    setToken(data.token);
+    setCustomer(data.customer);
+    setIsAuthModalOpen(false);
+
+    if (authSuccessCallback && typeof authSuccessCallback === 'function') {
+      authSuccessCallback(data.customer);
+      setAuthSuccessCallback(null);
+    }
+
+    return data.customer;
   };
 
   const logout = async () => {
-    await api.logout();
-    setCustomer(null);
-    setToken(null);
+    try {
+      await api.logout();
+    } catch (e) {
+      console.warn('Logout API error:', e);
+    } finally {
+      setCustomer(null);
+      setToken(null);
+      if (typeof window !== 'undefined') {
+        window.location.href = '/';
+      }
+    }
   };
 
   return (
@@ -83,6 +124,7 @@ export function CustomerAuthProvider({ children }) {
         openAuthModal,
         closeAuthModal,
         login,
+        register,
         logout,
         refreshProfile,
       }}

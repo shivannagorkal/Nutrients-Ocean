@@ -709,8 +709,15 @@ export default function Expenses() {
                     <td className="py-3 px-4 font-semibold text-slate-800 whitespace-nowrap">
                       {expense.category_name || '-'}
                     </td>
-                    <td className="py-3 px-4 text-slate-700 font-medium max-w-xs truncate">
-                      {expense.description}
+                    <td className="py-3 px-4 text-slate-700 font-medium max-w-xs">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="truncate">{expense.description}</span>
+                        {expense.receipt_number && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap">
+                            {expense.receipt_number}
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-4 text-right font-black text-slate-900">
                       {formatRupee(expense.amount)}

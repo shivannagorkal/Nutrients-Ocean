@@ -20,6 +20,15 @@ export class ExpensesController {
     }
   }
 
+  static async createExpenseBill(req, res, next) {
+    try {
+      const result = await ExpensesService.createExpenseBill(req.body, req.user.email);
+      return res.status(201).json(result);
+    } catch (err) {
+      next(err);
+    }
+  }
+
   static async listExpenses(req, res, next) {
     try {
       const data = await ExpensesService.listExpenses(req.query);

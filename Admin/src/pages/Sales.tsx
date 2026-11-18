@@ -753,14 +753,24 @@ export default function Sales() {
                       {formatDate(sale.sale_date)}
                     </td>
                     <td className="py-3 px-4 font-semibold text-slate-800">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span>{sale.product_name || 'Product'}</span>
                         {sale.is_mixed && (
                           <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                             Mixed
                           </span>
                         )}
+                        {sale.receipt_number && (
+                          <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            {sale.receipt_number}
+                          </span>
+                        )}
                       </div>
+                      {(sale.customer_name || sale.customer_phone) && (
+                        <div className="text-[10px] text-slate-400 font-normal mt-0.5">
+                          {sale.customer_name || 'Walk-in'} {sale.customer_phone ? `(${sale.customer_phone})` : ''}
+                        </div>
+                      )}
                     </td>
                     <td className="py-3 px-4 text-center font-semibold text-slate-700">{sale.quantity}</td>
                     <td className="py-3 px-4 text-right font-black text-slate-900">{formatRupee(sale.total_amount)}</td>

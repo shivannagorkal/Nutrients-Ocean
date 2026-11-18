@@ -1,82 +1,94 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Phone, ShieldCheck, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { X, Phone, User, Lock, Eye, EyeOff, ArrowRight, Loader2, CheckCircle2 } from 'lucide-react';
 import { useCustomerAuth } from '@/context/CustomerAuthContext';
 
 export default function AuthModal() {
-  const { isAuthModalOpen, closeAuthModal, login } = useCustomerAuth();
+  const { isAuthModalOpen, closeAuthModal, login, register } = useCustomerAuth();
 
+  const [mode, setMode] = useState('LOGIN'); // 'LOGIN' | 'REGISTER'
+  const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
-  const [step, setStep] = useState('PHONE'); // 'PHONE' | 'OTP'
-  const [otp, setOtp] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [infoMessage, setInfoMessage] = useState(null);
 
   if (!isAuthModalOpen) return null;
 
-  const handleSendOtp = async (e) => {
+  // Password rules check: 6+ chars, 1 uppercase, 1 lowercase, 1 number, 1 special char
+  const hasMinLen = password.length >= 6;
+  const hasUpper = /[A-Z]/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasNum = /\d/.test(password);
+  const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password);
+  const isPasswordValid = hasMinLen && hasUpper && hasLower && hasNum && hasSpecial;
+
+  const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     setError(null);
+    setInfoMessage(null);
 
-    const cleanPhone = phone.replace(/\D/g, '');
+    const cleanPhone = phone.replace(/\D/g, '').slice(-10);
     if (cleanPhone.length < 10) {
       setError('Please enter a valid 10-digit mobile number');
       return;
     }
 
-    setIsLoading(true);
-    try {
-      // In production, trigger Firebase Phone Recaptcha + signInWithPhoneNumber
-      // In dev/local mode, proceed immediately to OTP step
-      await new Promise((r) => setTimeout(r, 400));
-      setStep('OTP');
-    } catch (err) {
-      setError(err.message || 'Failed to send OTP. Please try again.');
-    } finally {
-      setIsLoading(false);
+    if (mode === 'REGISTER') {
+      if (!fullName.trim() || fullName.trim().length < 2) {
+        setError('Please enter your full name (minimum 2 characters)');
+        return;
+      }
+      if (!isPasswordValid) {
+        setError(
+          'Password must have at least 6 characters, including 1 uppercase, 1 lowercase, 1 number, and 1 special character'
+        );
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        await register(cleanPhone, fullName.trim(), password);
+        // Reset fields
+        setPassword('');
+      } catch (err) {
+        // If already registered, seamlessly switch to LOGIN
+        if (err.status === 409 || err.code === 'ALREADY_REGISTERED') {
+          setMode('LOGIN');
+          setInfoMessage('Mobile number is already registered! Please enter your password to sign in.');
+          setError(null);
+        } else {
+          setError(err.message || 'Registration failed. Please try again.');
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      // LOGIN mode
+      if (!password) {
+        setError('Please enter your password');
+        return;
+      }
+
+      setIsLoading(true);
+      try {
+        await login(cleanPhone, password);
+        setPassword('');
+      } catch (err) {
+        setError(err.message || 'Invalid mobile number or password.');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
-  const handleVerifyOtp = async (e) => {
-    if (e) e.preventDefault();
+  const toggleMode = (newMode) => {
+    setMode(newMode);
     setError(null);
-
-    const formattedPhone = phone.startsWith('+91')
-      ? phone
-      : `+91${phone.replace(/\D/g, '').slice(-10)}`;
-
-    setIsLoading(true);
-    try {
-      // In dev/test, pass test token or verified phone
-      const testToken = `test_token_${formattedPhone.replace(/\D/g, '')}`;
-      await login(formattedPhone, testToken);
-      // Reset state on successful login
-      setStep('PHONE');
-      setPhone('');
-      setOtp('');
-    } catch (err) {
-      setError(err.message || 'Invalid or expired OTP. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDevQuickLogin = async (devPhone = '+919876543210') => {
-    setError(null);
-    setIsLoading(true);
-    try {
-      setPhone('9876543210');
-      const testToken = `test_token_${devPhone.replace(/\D/g, '')}`;
-      await login(devPhone, testToken);
-      setStep('PHONE');
-      setPhone('');
-      setOtp('');
-    } catch (err) {
-      setError(err.message || 'Quick login failed.');
-    } finally {
-      setIsLoading(false);
-    }
+    setInfoMessage(null);
   };
 
   return (
@@ -100,12 +112,13 @@ export default function AuthModal() {
       <div
         className="auth-modal-card"
         style={{
-          backgroundColor: '#FFFFFF',
-          borderRadius: '24px',
+          backgroundColor: 'var(--surface-lowest, #FFFFFF)',
+          borderRadius: 'var(--shape-xl, 32px)',
           width: '100%',
-          maxWidth: '420px',
-          padding: '28px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+          maxWidth: '430px',
+          padding: '30px 26px',
+          boxShadow: 'var(--elev-4)',
+          border: '1px solid var(--outline-variant, #DCE3DA)',
           position: 'relative',
           animation: 'fadeInUp 0.2s ease-out',
         }}
@@ -117,7 +130,7 @@ export default function AuthModal() {
             position: 'absolute',
             top: '20px',
             right: '20px',
-            background: '#F1F5F9',
+            background: 'var(--surface-low, #F1F4EE)',
             border: 'none',
             borderRadius: '50%',
             width: '36px',
@@ -126,48 +139,109 @@ export default function AuthModal() {
             alignItems: 'center',
             justifyContent: 'center',
             cursor: 'pointer',
-            color: '#475569',
+            color: 'var(--on-surface-variant, #434942)',
           }}
           aria-label="Close modal"
         >
           <X size={18} />
         </button>
 
-        {/* Header */}
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+        {/* Brand / Mode Segmented Tabs */}
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
           <div
             style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '16px',
-              backgroundColor: '#D7F0D8',
-              color: '#1E6B34',
               display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '12px',
+              background: 'var(--surface-low, #F1F4EE)',
+              padding: '4px',
+              borderRadius: 'var(--shape-full, 9999px)',
+              border: '1px solid var(--outline-variant, #DCE3DA)',
+              marginBottom: '16px',
+              width: '100%',
+              maxWidth: '300px',
             }}
           >
-            {step === 'PHONE' ? <Phone size={24} /> : <ShieldCheck size={24} />}
+            <button
+              type="button"
+              onClick={() => toggleMode('LOGIN')}
+              style={{
+                flex: 1,
+                padding: '8px 16px',
+                borderRadius: 'var(--shape-full, 9999px)',
+                border: 'none',
+                background: mode === 'LOGIN' ? 'var(--surface-lowest, #FFFFFF)' : 'transparent',
+                color: mode === 'LOGIN' ? 'var(--primary, #1E6B34)' : 'var(--on-surface-variant, #434942)',
+                fontWeight: '700',
+                fontSize: '13.5px',
+                cursor: 'pointer',
+                boxShadow: mode === 'LOGIN' ? 'var(--elev-1)' : 'none',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              Sign In
+            </button>
+            <button
+              type="button"
+              onClick={() => toggleMode('REGISTER')}
+              style={{
+                flex: 1,
+                padding: '8px 16px',
+                borderRadius: 'var(--shape-full, 9999px)',
+                border: 'none',
+                background: mode === 'REGISTER' ? 'var(--surface-lowest, #FFFFFF)' : 'transparent',
+                color: mode === 'REGISTER' ? 'var(--primary, #1E6B34)' : 'var(--on-surface-variant, #434942)',
+                fontWeight: '700',
+                fontSize: '13.5px',
+                cursor: 'pointer',
+                boxShadow: mode === 'REGISTER' ? 'var(--elev-1)' : 'none',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              Register
+            </button>
           </div>
-          <h3 style={{ fontSize: '20px', fontWeight: '700', color: '#0F172A', marginBottom: '6px' }}>
-            {step === 'PHONE' ? 'Sign In with Mobile' : 'Enter Verification Code'}
+
+          <h3 style={{ fontSize: '20px', fontWeight: '800', color: 'var(--on-surface, #191D19)', margin: 0 }}>
+            {mode === 'LOGIN' ? 'Welcome Back!' : 'Create Customer Account'}
           </h3>
-          <p style={{ fontSize: '13px', color: '#64748B', lineHeight: '1.4' }}>
-            {step === 'PHONE'
-              ? 'Enjoy seamless ordering, unlimited freeze calendar & rotating daily QR pass.'
-              : `We sent a 6-digit code to +91 ${phone.replace(/\D/g, '').slice(-10)}`}
+          <p style={{ fontSize: '13px', color: 'var(--on-surface-variant, #434942)', marginTop: '4px' }}>
+            {mode === 'LOGIN'
+              ? 'Enter your mobile number and password to sign in.'
+              : 'Register once with your mobile & password for daily stall access.'}
           </p>
         </div>
 
+        {/* Information Message (e.g. Switched to login) */}
+        {infoMessage && (
+          <div
+            style={{
+              padding: '10px 14px',
+              borderRadius: 'var(--shape-md, 16px)',
+              backgroundColor: 'var(--primary-container, #E0F3E2)',
+              color: 'var(--on-primary-container, #002107)',
+              fontSize: '12.5px',
+              fontWeight: '600',
+              marginBottom: '16px',
+              lineHeight: '1.4',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+            }}
+          >
+            <CheckCircle2 size={16} color="var(--primary, #1E6B34)" flexShrink={0} />
+            <span>{infoMessage}</span>
+          </div>
+        )}
+
+        {/* Error Alert */}
         {error && (
           <div
             style={{
               padding: '10px 14px',
-              borderRadius: '10px',
+              borderRadius: 'var(--shape-md, 16px)',
               backgroundColor: '#FEE2E2',
               color: '#991B1B',
-              fontSize: '13px',
+              fontSize: '12.5px',
+              fontWeight: '600',
               marginBottom: '16px',
               lineHeight: '1.4',
             }}
@@ -176,223 +250,283 @@ export default function AuthModal() {
           </div>
         )}
 
-        {/* Step 1: Phone */}
-        {step === 'PHONE' && (
-          <form onSubmit={handleSendOtp}>
-            <div style={{ marginBottom: '18px' }}>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          {/* Full Name Field (Register Only) */}
+          {mode === 'REGISTER' && (
+            <div>
               <label
                 style={{
                   display: 'block',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: '#475569',
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  color: 'var(--on-surface-variant, #434942)',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  marginBottom: '6px',
+                  letterSpacing: '0.05em',
+                  marginBottom: '5px',
                 }}
               >
-                Mobile Number
+                Full Name
               </label>
               <div
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  border: '1.5px solid #CBD5E1',
-                  borderRadius: '12px',
-                  overflow: 'hidden',
-                  background: '#F8FAFC',
+                  border: '1.5px solid var(--outline-variant, #DCE3DA)',
+                  borderRadius: 'var(--shape-md, 16px)',
+                  background: 'var(--surface-low, #F1F4EE)',
+                  padding: '0 12px',
                 }}
               >
-                <span
-                  style={{
-                    padding: '0 12px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#334155',
-                    borderRight: '1px solid #CBD5E1',
-                  }}
-                >
-                  🇮🇳 +91
-                </span>
+                <User size={16} color="var(--outline, #727971)" />
                 <input
-                  type="tel"
-                  maxLength={10}
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                  placeholder="98765 43210"
-                  autoFocus
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Rahul Shetty"
                   style={{
                     width: '100%',
-                    padding: '12px 14px',
+                    padding: '11px 10px',
                     border: 'none',
                     outline: 'none',
-                    fontSize: '16px',
+                    fontSize: '15px',
                     fontWeight: '600',
-                    color: '#0F172A',
+                    color: 'var(--on-surface, #191D19)',
                     background: 'transparent',
                   }}
+                  autoFocus
                 />
               </div>
             </div>
+          )}
 
-            <button
-              type="submit"
-              disabled={isLoading || phone.replace(/\D/g, '').length < 10}
+          {/* Mobile Number Field */}
+          <div>
+            <label
               style={{
-                width: '100%',
-                padding: '14px',
-                backgroundColor: '#1E6B34',
-                color: '#FFFFFF',
-                border: 'none',
-                borderRadius: '12px',
-                fontSize: '15px',
-                fontWeight: '600',
-                cursor: isLoading ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                opacity: phone.replace(/\D/g, '').length < 10 ? 0.6 : 1,
+                display: 'block',
+                fontSize: '11px',
+                fontWeight: '700',
+                color: 'var(--on-surface-variant, #434942)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                marginBottom: '5px',
               }}
             >
-              {isLoading ? (
-                <>
-                  <Loader2 size={18} className="spin" /> Sending OTP...
-                </>
-              ) : (
-                <>
-                  Continue <ArrowRight size={18} />
-                </>
-              )}
-            </button>
-          </form>
-        )}
-
-        {/* Step 2: OTP */}
-        {step === 'OTP' && (
-          <form onSubmit={handleVerifyOtp}>
-            <div style={{ marginBottom: '18px' }}>
-              <label
+              Mobile Number
+            </label>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                border: '1.5px solid var(--outline-variant, #DCE3DA)',
+                borderRadius: 'var(--shape-md, 16px)',
+                overflow: 'hidden',
+                background: 'var(--surface-low, #F1F4EE)',
+              }}
+            >
+              <span
                 style={{
-                  display: 'block',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  color: '#475569',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  marginBottom: '6px',
+                  padding: '0 12px',
+                  fontSize: '14px',
+                  fontWeight: '700',
+                  color: 'var(--on-surface, #191D19)',
+                  borderRight: '1.5px solid var(--outline-variant, #DCE3DA)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
                 }}
               >
-                6-Digit Code
-              </label>
+                <Phone size={14} /> +91
+              </span>
               <input
-                type="text"
-                maxLength={6}
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                placeholder="123456"
-                autoFocus
+                type="tel"
+                maxLength={10}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                placeholder="98765 43210"
                 style={{
                   width: '100%',
-                  padding: '12px 14px',
-                  border: '1.5px solid #CBD5E1',
-                  borderRadius: '12px',
+                  padding: '11px 12px',
+                  border: 'none',
                   outline: 'none',
-                  fontSize: '20px',
-                  fontWeight: '700',
-                  textAlign: 'center',
-                  letterSpacing: '6px',
-                  color: '#0F172A',
-                  background: '#F8FAFC',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  color: 'var(--on-surface, #191D19)',
+                  background: 'transparent',
                 }}
               />
+            </div>
+          </div>
+
+          {/* Password Field */}
+          <div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+              <label
+                style={{
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  color: 'var(--on-surface-variant, #434942)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                {mode === 'REGISTER' ? 'Create Password' : 'Password'}
+              </label>
+            </div>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                border: '1.5px solid var(--outline-variant, #DCE3DA)',
+                borderRadius: 'var(--shape-md, 16px)',
+                background: 'var(--surface-low, #F1F4EE)',
+                padding: '0 12px',
+              }}
+            >
+              <Lock size={16} color="var(--outline, #727971)" />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={mode === 'REGISTER' ? 'Min 6 chars (e.g. Fit@123)' : 'Enter your password'}
+                style={{
+                  width: '100%',
+                  padding: '11px 10px',
+                  border: 'none',
+                  outline: 'none',
+                  fontSize: '15px',
+                  fontWeight: '600',
+                  color: 'var(--on-surface, #191D19)',
+                  background: 'transparent',
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--on-surface-variant, #434942)',
+                  cursor: 'pointer',
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+
+            {/* Password Requirement Hint (Register Mode) */}
+            {mode === 'REGISTER' && (
               <div
                 style={{
                   marginTop: '8px',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  fontSize: '12px',
+                  padding: '8px 12px',
+                  borderRadius: 'var(--shape-md, 16px)',
+                  background: 'var(--surface-low, #F1F4EE)',
+                  fontSize: '11.5px',
+                  color: 'var(--on-surface-variant, #434942)',
+                  lineHeight: '1.4',
                 }}
               >
-                <button
-                  type="button"
-                  onClick={() => setStep('PHONE')}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#64748B',
-                    cursor: 'pointer',
-                    textDecoration: 'underline',
-                  }}
-                >
-                  Change Number
-                </button>
-                <span style={{ color: '#16A34A', fontWeight: '500' }}>Dev auto-verified</span>
+                <div style={{ fontWeight: '700', marginBottom: '2px' }}>Password requirement:</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px' }}>
+                  <span style={{ color: hasMinLen ? 'var(--primary, #1E6B34)' : 'inherit' }}>
+                    {hasMinLen ? '✓' : '•'} 6+ characters
+                  </span>
+                  <span style={{ color: hasUpper ? 'var(--primary, #1E6B34)' : 'inherit' }}>
+                    {hasUpper ? '✓' : '•'} 1 Uppercase
+                  </span>
+                  <span style={{ color: hasLower ? 'var(--primary, #1E6B34)' : 'inherit' }}>
+                    {hasLower ? '✓' : '•'} 1 Lowercase
+                  </span>
+                  <span style={{ color: hasNum && hasSpecial ? 'var(--primary, #1E6B34)' : 'inherit' }}>
+                    {hasNum && hasSpecial ? '✓' : '•'} Number &amp; Symbol
+                  </span>
+                </div>
               </div>
-            </div>
+            )}
+          </div>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              style={{
-                width: '100%',
-                padding: '14px',
-                backgroundColor: '#1E6B34',
-                color: '#FFFFFF',
-                border: 'none',
-                borderRadius: '12px',
-                fontSize: '15px',
-                fontWeight: '600',
-                cursor: isLoading ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-              }}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 size={18} className="spin" /> Verifying...
-                </>
-              ) : (
-                'Verify & Continue'
-              )}
-            </button>
-          </form>
-        )}
-
-        {/* Demo Fast Track Login */}
-        <div
-          style={{
-            marginTop: '20px',
-            paddingTop: '16px',
-            borderTop: '1px dashed #E2E8F0',
-            textAlign: 'center',
-          }}
-        >
+          {/* Primary Action Button */}
           <button
-            type="button"
-            onClick={() => handleDevQuickLogin('+919876543210')}
+            type="submit"
             disabled={isLoading}
+            className="btn btn-primary"
             style={{
-              background: '#F0FDF4',
-              border: '1px solid #BBF7D0',
-              borderRadius: '10px',
-              padding: '8px 14px',
-              fontSize: '12px',
-              fontWeight: '600',
-              color: '#166534',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
+              width: '100%',
+              minHeight: '48px',
+              height: '48px',
+              borderRadius: 'var(--shape-full, 9999px)',
+              fontSize: '15px',
+              fontWeight: '700',
+              marginTop: '6px',
             }}
           >
-            <Sparkles size={14} /> One-Tap Dev Login (+91 98765 43210)
+            {isLoading ? (
+              <>
+                <Loader2 size={18} className="spin" />
+                <span>{mode === 'LOGIN' ? 'Signing In...' : 'Creating Account...'}</span>
+              </>
+            ) : mode === 'LOGIN' ? (
+              <>
+                <span>Sign In</span>
+                <ArrowRight size={18} />
+              </>
+            ) : (
+              <>
+                <span>Create Account</span>
+                <ArrowRight size={18} />
+              </>
+            )}
           </button>
+        </form>
+
+        {/* Switch Mode Footer */}
+        <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '13px', color: 'var(--on-surface-variant, #434942)' }}>
+          {mode === 'LOGIN' ? (
+            <span>
+              New customer?{' '}
+              <button
+                type="button"
+                onClick={() => toggleMode('REGISTER')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--primary, #1E6B34)',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  padding: 0,
+                }}
+              >
+                Register here
+              </button>
+            </span>
+          ) : (
+            <span>
+              Already registered?{' '}
+              <button
+                type="button"
+                onClick={() => toggleMode('LOGIN')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--primary, #1E6B34)',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  textDecoration: 'underline',
+                  padding: 0,
+                }}
+              >
+                Sign In
+              </button>
+            </span>
+          )}
         </div>
       </div>
     </div>
   );
 }
-

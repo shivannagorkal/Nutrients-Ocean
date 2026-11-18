@@ -355,7 +355,7 @@ export default function Today() {
                 comparison={data?.comparisons[comparisonMode]?.orders}
                 label={comparisonMode === 'yesterday' ? 'vs yest' : 'vs last wk'}
               />
-              <span className="text-[10px] text-slate-400 font-medium">Total sales rows</span>
+              <span className="text-[10px] text-slate-400 font-medium">Distinct orders</span>
             </div>
           </div>
 
@@ -713,14 +713,24 @@ export default function Today() {
                         {sale.timestamp ? format(new Date(sale.timestamp), 'hh:mm a') : '-'}
                       </td>
                       <td className="py-3 px-4 font-semibold text-slate-800">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span>{sale.product_name || 'Product'}</span>
                           {sale.is_mixed && (
                             <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
                               Mixed
                             </span>
                           )}
+                          {sale.receipt_number && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              {sale.receipt_number}
+                            </span>
+                          )}
                         </div>
+                        {(sale.customer_name || sale.customer_phone) && (
+                          <div className="text-[10px] text-slate-400 font-normal mt-0.5">
+                            {sale.customer_name || 'Walk-in'} {sale.customer_phone ? `(${sale.customer_phone})` : ''}
+                          </div>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-center font-semibold text-slate-700">
                         {sale.quantity}
@@ -807,8 +817,15 @@ export default function Today() {
                       <td className="py-3 px-4 font-semibold text-slate-800 whitespace-nowrap">
                         {expense.category_name || '-'}
                       </td>
-                      <td className="py-3 px-4 text-slate-700 font-medium max-w-xs truncate">
-                        {expense.description}
+                      <td className="py-3 px-4 text-slate-700 font-medium max-w-xs">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="truncate">{expense.description}</span>
+                          {expense.receipt_number && (
+                            <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-purple-50 text-purple-700 border border-purple-200 whitespace-nowrap">
+                              {expense.receipt_number}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="py-3 px-4 text-right font-black text-slate-900">
                         {formatRupee(expense.amount)}

@@ -1,5 +1,8 @@
 import { Router } from 'express';
 import authRoutes from './auth.routes.js';
+import customerAuthRoutes from './customerAuth.routes.js';
+import customerOrdersRoutes from './customerOrders.routes.js';
+import adminOrdersRoutes from './adminOrders.routes.js';
 import metaRoutes from './meta.routes.js';
 import todayRoutes from './today.routes.js';
 import overviewRoutes from './overview.routes.js';
@@ -20,6 +23,13 @@ router.use(generalRateLimiter);
 
 // Auth routes (/api/auth)
 router.use('/auth', authRoutes);
+
+// Customer Auth & Order routes
+router.use('/customer/auth', customerAuthRoutes);
+router.use('/customer/orders', customerOrdersRoutes);
+
+// Admin Orders Kitchen route (/api/orders)
+router.use('/orders', adminOrdersRoutes);
 
 // Meta reference routes (/api/meta)
 router.use('/meta', metaRoutes);

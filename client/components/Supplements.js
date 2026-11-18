@@ -8,8 +8,6 @@ export default function Supplements() {
       <div className="container">
         <Reveal>
           <div className="supp-panel">
-            <span className="supp-orb orb-1" aria-hidden="true" />
-            <span className="supp-orb orb-2" aria-hidden="true" />
             <div className="supp-content">
               <span className="eyebrow supp-badge">{siteData.supplements.badge}</span>
               <h2 className="section-title supp-title">{siteData.supplements.title}</h2>

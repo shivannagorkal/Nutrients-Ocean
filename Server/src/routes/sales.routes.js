@@ -4,6 +4,7 @@ import { authenticate } from '../middlewares/auth.middleware.js';
 import { validate } from '../middlewares/validate.middleware.js';
 import {
   createSaleSchema,
+  createSaleOrderSchema,
   updateSaleSchema,
   getSaleParamsSchema,
   listSalesQuerySchema,
@@ -21,6 +22,7 @@ router.get('/', validate({ query: dashboardRangeQuerySchema }), SalesController.
 // Static records routes registered first per Section 8
 router.get('/records', validate(listSalesQuerySchema), SalesController.listSales);
 router.post('/records', validate(createSaleSchema), SalesController.createSale);
+router.post('/order', validate(createSaleOrderSchema), SalesController.createSaleOrder);
 
 // ID-based records routes registered after
 router.get('/records/:id', validate(getSaleParamsSchema), SalesController.getSale);

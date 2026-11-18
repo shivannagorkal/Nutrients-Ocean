@@ -185,12 +185,11 @@ export default function MenuSubscriptions() {
                     )}
                   </div>
 
-                  <div style={{ display: "flex", gap: "6px", marginTop: "10px" }}>
+                  <div className="menupage-sub-actions">
                     <button
                       type="button"
-                      className="btn btn-primary btn-sm"
+                      className="btn menupage-sub-btn-join"
                       onClick={() => handleOpenSubscribe(plan)}
-                      style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}
                     >
                       <Sparkles size={14} />
                       <span>Join Plan</span>
@@ -199,11 +198,12 @@ export default function MenuSubscriptions() {
                       href={buildSubscriptionWhatsAppUrl(whatsappNumber, plan.name, `${plan.price}${plan.period}`)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="btn btn-tonal btn-sm menupage-sub-btn"
-                      title="Pre-order on WhatsApp"
-                      aria-label="Pre-order on WhatsApp"
+                      className="btn menupage-sub-btn-wa"
+                      title="Enquire on WhatsApp"
+                      aria-label="Enquire on WhatsApp"
                     >
-                      <WhatsAppIcon size={16} />
+                      <WhatsAppIcon size={15} />
+                      <span>WhatsApp</span>
                     </a>
                   </div>
                 </div>
@@ -256,15 +256,14 @@ export default function MenuSubscriptions() {
                   <span className="menupage-sub-price">
                     {combo.price} <small>{combo.period}</small>
                   </span>
-                  <div style={{ display: "flex", gap: "6px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", minWidth: "220px" }}>
                     <button
                       type="button"
-                      className="btn btn-primary btn-sm"
+                      className="btn menupage-sub-btn-join"
                       onClick={() => handleOpenSubscribe(combo)}
-                      style={{ display: "flex", alignItems: "center", gap: "6px" }}
                     >
                       <Sparkles size={14} />
-                      <span>Join</span>
+                      <span>Join Plan</span>
                     </button>
                     <a
                       href={buildSubscriptionWhatsAppUrl(
@@ -274,11 +273,12 @@ export default function MenuSubscriptions() {
                       )}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="btn btn-tonal btn-sm"
-                      title="Pre-order on WhatsApp"
-                      aria-label="Pre-order on WhatsApp"
+                      className="btn menupage-sub-btn-wa"
+                      title="Enquire on WhatsApp"
+                      aria-label="Enquire on WhatsApp"
                     >
-                      <WhatsAppIcon size={16} />
+                      <WhatsAppIcon size={15} />
+                      <span>WhatsApp</span>
                     </a>
                   </div>
                 </div>

@@ -4,6 +4,7 @@ import { authenticate } from '../middlewares/auth.middleware.js';
 import { validate } from '../middlewares/validate.middleware.js';
 import {
   createExpenseSchema,
+  createExpenseBillSchema,
   updateExpenseSchema,
   getExpenseParamsSchema,
   listExpensesQuerySchema,
@@ -21,6 +22,7 @@ router.get('/', validate({ query: dashboardRangeQuerySchema }), ExpensesControll
 // Static records routes registered first per Section 8
 router.get('/records', validate(listExpensesQuerySchema), ExpensesController.listExpenses);
 router.post('/records', validate(createExpenseSchema), ExpensesController.createExpense);
+router.post('/bill', validate(createExpenseBillSchema), ExpensesController.createExpenseBill);
 
 // ID-based records routes registered after
 router.get('/records/:id', validate(getExpenseParamsSchema), ExpensesController.getExpense);

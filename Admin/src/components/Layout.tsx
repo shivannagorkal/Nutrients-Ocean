@@ -5,6 +5,7 @@ import { useDateRange, RangePreset } from '../context/DateRangeContext';
 import { useDataCheck } from '../api/dataCheck';
 import {
   Calendar,
+  ShoppingBag,
   TrendingUp,
   Receipt,
   Users,
@@ -52,6 +53,7 @@ export default function Layout() {
 
   const navItems = [
     { name: 'Today', path: '/today', icon: Calendar },
+    { name: 'Live Orders', path: '/orders', icon: ShoppingBag },
     { name: 'Sales', path: '/sales', icon: TrendingUp },
     { name: 'Expenses', path: '/expenses', icon: Receipt },
     { name: 'Partners', path: '/partners', icon: Users },

@@ -1,29 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
 import Drawer from './Drawer';
 import { useMetadata, Product } from '../api/meta';
-import { useCreateSale, useUpdateSale, SaleRecord } from '../api/sales';
+import { useCreateSale, useUpdateSale, useCreateSaleOrder, SaleRecord } from '../api/sales';
 import { useAuth } from '../context/AuthContext';
 import { format } from 'date-fns';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Plus, Minus, Trash2, ShoppingBag, User, Phone } from 'lucide-react';
 
-const saleFormSchema = z
-  .object({
-    sale_date: z.string().min(1, 'Date is required'),
-    product_id: z.string().uuid('Please select a product'),
-    quantity: z.coerce.number().int().min(1, 'Quantity must be at least 1').max(1000),
-    price_per_item: z.coerce.number().min(0, 'Price cannot be negative').optional(),
-    total_amount: z.coerce.number().min(0.01, 'Total amount must be greater than 0'),
-    payment_method: z.enum(['UPI', 'Cash']),
-    received_by: z.string().uuid('Please select who received payment'),
-    notes: z.string().max(500, 'Notes cannot exceed 500 characters').optional(),
-  })
-  .superRefine((data, ctx) => {
-    // When product is "Other", notes is required and min 3 chars
-    // This will be checked with product name lookup
-  });
+interface OrderLineItem {
+  id: string; // client temporary id
+  product_id: string;
+  quantity: number;
+  price_per_item: number;
+  total_amount: number;
+  notes: string;
+}
 
 interface SaleDrawerProps {
   isOpen: boolean;
@@ -42,134 +32,253 @@ export default function SaleDrawer({
   const { data: meta } = useMetadata();
   const createSaleMutation = useCreateSale();
   const updateSaleMutation = useUpdateSale();
-
-  const [addAnother, setAddAnother] = useState(false);
-  const [errorMessage, setErrorMessage] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const createSaleOrderMutation = useCreateSaleOrder();
 
   const todayIST = format(new Date(), 'yyyy-MM-dd');
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm({
-    resolver: zodResolver(saleFormSchema),
-    defaultValues: {
-      sale_date: todayIST,
-      product_id: '',
-      quantity: 1,
-      price_per_item: 0,
-      total_amount: 0,
-      payment_method: 'UPI' as 'UPI' | 'Cash',
-      received_by: '',
-      notes: '',
-    },
-  });
+  // Common Header State
+  const [saleDate, setSaleDate] = useState(todayIST);
+  const [paymentMethod, setPaymentMethod] = useState<'UPI' | 'Cash'>('UPI');
+  const [receivedBy, setReceivedBy] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [orderNotes, setOrderNotes] = useState('');
 
-  const selectedProductId = watch('product_id');
-  const quantity = watch('quantity');
-  const pricePerItem = watch('price_per_item');
-  const notesValue = watch('notes');
+  // Multi-Item State
+  const [items, setItems] = useState<OrderLineItem[]>([]);
+  const [addAnother, setAddAnother] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const selectedProduct = meta?.products.find((p) => p.id === selectedProductId);
-  const isOtherProduct = selectedProduct?.name.toLowerCase() === 'other';
-
-  // Set initial form state or defaults
+  // Initialize or reset form state
   useEffect(() => {
+    if (!isOpen) return;
+
+    setErrorMessage('');
+    setSuccessMessage('');
+    setIsSubmitting(false);
+
     if (initialData) {
-      reset({
-        sale_date: initialData.sale_date ? String(initialData.sale_date).slice(0, 10) : todayIST,
-        product_id: initialData.product_id,
-        quantity: initialData.quantity,
-        price_per_item: initialData.price_per_item || 0,
-        total_amount: initialData.total_amount,
-        payment_method: initialData.payment_method,
-        received_by: initialData.received_by,
-        notes: initialData.notes || '',
-      });
+      // Editing existing single sale record
+      setSaleDate(initialData.sale_date ? String(initialData.sale_date).slice(0, 10) : todayIST);
+      setPaymentMethod(initialData.payment_method);
+      setReceivedBy(initialData.received_by);
+      setCustomerName(initialData.customer_name || '');
+      setCustomerPhone(initialData.customer_phone || '');
+      setOrderNotes(initialData.notes || '');
+
+      setItems([
+        {
+          id: initialData.id,
+          product_id: initialData.product_id,
+          quantity: initialData.quantity,
+          price_per_item: initialData.price_per_item || 0,
+          total_amount: initialData.total_amount,
+          notes: initialData.notes || '',
+        },
+      ]);
     } else {
-      // Find current user's member ID
+      // New multi-item order by default
+      setSaleDate(todayIST);
+      setPaymentMethod('UPI');
+      setCustomerName('');
+      setCustomerPhone('');
+      setOrderNotes('');
+
       const userMember = meta?.members.find((m) => m.name === user?.member);
-      reset({
-        sale_date: todayIST,
-        product_id: meta?.products[0]?.id || '',
+      setReceivedBy(userMember ? userMember.id : meta?.members[0]?.id || '');
+
+      const defaultProduct = meta?.products[0];
+      setItems([
+        {
+          id: `item-${Date.now()}-1`,
+          product_id: defaultProduct ? defaultProduct.id : '',
+          quantity: 1,
+          price_per_item: defaultProduct ? defaultProduct.default_price : 0,
+          total_amount: defaultProduct ? defaultProduct.default_price : 0,
+          notes: '',
+        },
+      ]);
+    }
+  }, [initialData, isOpen, meta, user, todayIST]);
+
+  // Add a new line item row
+  const handleAddItem = () => {
+    const defaultProduct = meta?.products[0];
+    setItems((prev) => [
+      ...prev,
+      {
+        id: `item-${Date.now()}-${prev.length + 1}`,
+        product_id: defaultProduct ? defaultProduct.id : '',
         quantity: 1,
-        price_per_item: meta?.products[0]?.default_price || 0,
-        total_amount: meta?.products[0]?.default_price || 0,
-        payment_method: 'UPI',
-        received_by: userMember ? userMember.id : meta?.members[0]?.id || '',
+        price_per_item: defaultProduct ? defaultProduct.default_price : 0,
+        total_amount: defaultProduct ? defaultProduct.default_price : 0,
         notes: '',
-      });
-    }
+      },
+    ]);
+  };
+
+  // Remove a line item row
+  const handleRemoveItem = (index: number) => {
+    if (items.length <= 1) return; // Keep at least 1 item
+    setItems((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  // Update item product
+  const handleProductChange = (index: number, productId: string) => {
+    const product = meta?.products.find((p) => p.id === productId);
+    setItems((prev) =>
+      prev.map((it, idx) => {
+        if (idx !== index) return it;
+        const unitPrice = product ? product.default_price : it.price_per_item;
+        return {
+          ...it,
+          product_id: productId,
+          price_per_item: unitPrice,
+          total_amount: it.quantity * unitPrice,
+        };
+      })
+    );
+  };
+
+  // Update item quantity
+  const handleQuantityChange = (index: number, qty: number) => {
+    const validQty = Math.max(1, qty);
+    setItems((prev) =>
+      prev.map((it, idx) => {
+        if (idx !== index) return it;
+        return {
+          ...it,
+          quantity: validQty,
+          total_amount: validQty * it.price_per_item,
+        };
+      })
+    );
+  };
+
+  // Update item unit price
+  const handlePriceChange = (index: number, price: number) => {
+    const validPrice = Math.max(0, price);
+    setItems((prev) =>
+      prev.map((it, idx) => {
+        if (idx !== index) return it;
+        return {
+          ...it,
+          price_per_item: validPrice,
+          total_amount: it.quantity * validPrice,
+        };
+      })
+    );
+  };
+
+  // Update item notes
+  const handleItemNotesChange = (index: number, notes: string) => {
+    setItems((prev) =>
+      prev.map((it, idx) => (idx === index ? { ...it, notes } : it))
+    );
+  };
+
+  // Compute grand total
+  const grandTotal = items.reduce((sum, it) => sum + (Number(it.total_amount) || 0), 0);
+  const totalUnits = items.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0);
+
+  // Form submission handler
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
-  }, [initialData, isOpen, meta, user, reset]);
 
-  // When product changes, auto-suggest price and total
-  const handleProductChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const prodId = e.target.value;
-    setValue('product_id', prodId);
-    const prod = meta?.products.find((p) => p.id === prodId);
-    if (prod) {
-      const unitPrice = prod.default_price;
-      setValue('price_per_item', unitPrice);
-      setValue('total_amount', Number(quantity || 1) * unitPrice);
-    }
-  };
-
-  // When quantity or unit price changes, auto-suggest total_amount
-  const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const q = parseInt(e.target.value, 10) || 1;
-    setValue('quantity', q);
-    setValue('total_amount', q * Number(pricePerItem || 0));
-  };
-
-  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const p = parseFloat(e.target.value) || 0;
-    setValue('price_per_item', p);
-    setValue('total_amount', Number(quantity || 1) * p);
-  };
-
-  const onSubmit = async (values: any) => {
-    setErrorMessage('');
-    setSuccessMessage('');
-
-    if (isOtherProduct && (!values.notes || values.notes.trim().length < 3)) {
-      setErrorMessage('Notes are required (minimum 3 characters) when product is "Other"');
+    if (!receivedBy) {
+      setErrorMessage('Please select who received payment');
       return;
     }
 
-    const payload = {
-      ...values,
-      sale_date: values.sale_date ? String(values.sale_date).slice(0, 10) : values.sale_date,
-    };
+    if (items.length === 0) {
+      setErrorMessage('Order must contain at least one item');
+      return;
+    }
 
+    // Validate each item
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      if (!it.product_id) {
+        setErrorMessage(`Please select a product for item #${i + 1}`);
+        return;
+      }
+      const prod = meta?.products.find((p) => p.id === it.product_id);
+      if (prod?.name.toLowerCase() === 'other' && (!it.notes || it.notes.trim().length < 3)) {
+        setErrorMessage(`Item #${i + 1} (${prod.name}) requires notes (min 3 characters)`);
+        return;
+      }
+    }
+
+    setIsSubmitting(true);
     try {
       if (initialData) {
+        // Edit existing single sale
+        const item = items[0];
+        const payload = {
+          sale_date: saleDate,
+          product_id: item.product_id,
+          quantity: item.quantity,
+          price_per_item: item.price_per_item,
+          total_amount: item.total_amount,
+          payment_method: paymentMethod,
+          received_by: receivedBy,
+          customer_name: customerName.trim() || null,
+          customer_phone: customerPhone.trim() || null,
+          notes: item.notes || orderNotes || null,
+        };
         await updateSaleMutation.mutateAsync({ id: initialData.id, data: payload });
         onSuccessToast?.('Sale record updated successfully');
         onClose();
       } else {
-        await createSaleMutation.mutateAsync(payload);
-        onSuccessToast?.('Sale recorded successfully');
+        // Create multi-item order
+        const payload = {
+          sale_date: saleDate,
+          payment_method: paymentMethod,
+          received_by: receivedBy,
+          customer_name: customerName.trim() || null,
+          customer_phone: customerPhone.trim() || null,
+          notes: orderNotes.trim() || null,
+          items: items.map((it) => ({
+            product_id: it.product_id,
+            quantity: it.quantity,
+            price_per_item: it.price_per_item,
+            total_amount: it.total_amount,
+            notes: it.notes || null,
+          })),
+        };
+
+        const result: any = await createSaleOrderMutation.mutateAsync(payload);
+        const receiptMsg = `Order #${result.receipt_number || 'SAVED'} recorded successfully (${result.items_count || items.length} items • ₹${grandTotal.toFixed(2)})`;
+        onSuccessToast?.(receiptMsg);
+
         if (addAnother) {
-          setSuccessMessage('Sale recorded. Ready for next entry.');
-          setValue('quantity', 1);
-          setValue('notes', '');
-          const prod = meta?.products.find((p) => p.id === values.product_id);
-          if (prod) {
-            setValue('total_amount', prod.default_price);
-          }
+          setSuccessMessage(receiptMsg + '. Ready for next entry.');
+          setCustomerName('');
+          setCustomerPhone('');
+          setOrderNotes('');
+          const defaultProduct = meta?.products[0];
+          setItems([
+            {
+              id: `item-${Date.now()}-1`,
+              product_id: defaultProduct ? defaultProduct.id : '',
+              quantity: 1,
+              price_per_item: defaultProduct ? defaultProduct.default_price : 0,
+              total_amount: defaultProduct ? defaultProduct.default_price : 0,
+              notes: '',
+            },
+          ]);
         } else {
           onClose();
         }
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to save sale record');
+      setErrorMessage(err.message || 'Failed to save order record');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -177,10 +286,11 @@ export default function SaleDrawer({
     <Drawer
       isOpen={isOpen}
       onClose={onClose}
-      title={initialData ? 'Edit Sale Record' : 'Record New Sale'}
-      subtitle={initialData ? `ID: ${initialData.id.slice(0, 8)}...` : 'Enter customer order details'}
+      title={initialData ? 'Edit Sale Record' : 'Record Stall Order'}
+      subtitle={initialData ? `ID: ${initialData.id.slice(0, 8)}...` : 'Multi-Item Order Entry'}
+      width="max-w-lg"
     >
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {errorMessage && (
           <div className="p-3 bg-red-50 text-red-700 rounded-xl text-xs flex items-center gap-2 border border-red-200">
             <AlertCircle className="h-4 w-4 flex-shrink-0" />
@@ -195,174 +305,288 @@ export default function SaleDrawer({
           </div>
         )}
 
-        {/* Sale Date */}
-        <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">Date</label>
-          <input
-            type="date"
-            {...register('sale_date')}
-            className="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-          />
-          {errors.sale_date && (
-            <p className="text-red-500 text-[11px] mt-1">{errors.sale_date.message as string}</p>
-          )}
+        {/* Order Header: Date & Payment Method */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Date</label>
+            <input
+              type="date"
+              value={saleDate}
+              onChange={(e) => setSaleDate(e.target.value)}
+              className="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 mb-1">Payment Method</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('UPI')}
+                className={`text-xs py-2 px-3 rounded-lg font-bold border transition-colors ${
+                  paymentMethod === 'UPI'
+                    ? 'bg-emerald-100 border-emerald-400 text-emerald-800 shadow-sm'
+                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                UPI
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('Cash')}
+                className={`text-xs py-2 px-3 rounded-lg font-bold border transition-colors ${
+                  paymentMethod === 'Cash'
+                    ? 'bg-sky-100 border-sky-400 text-sky-800 shadow-sm'
+                    : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                Cash
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* Product Dropdown */}
+        {/* Received By Partner */}
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">Product</label>
+          <label className="block text-xs font-semibold text-slate-700 mb-1">Payment Received By</label>
           <select
-            value={selectedProductId}
-            onChange={handleProductChange}
+            value={receivedBy}
+            onChange={(e) => setReceivedBy(e.target.value)}
             className="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            required
           >
-            {meta?.products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name} {p.default_price > 0 ? `(₹${p.default_price})` : ''}
+            <option value="">Select Partner / Member</option>
+            {meta?.members.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
               </option>
             ))}
           </select>
-          {errors.product_id && (
-            <p className="text-red-500 text-[11px] mt-1">{errors.product_id.message as string}</p>
-          )}
         </div>
 
-        {/* Quantity and Price Grid */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Quantity</label>
-            <input
-              type="number"
-              min="1"
-              max="1000"
-              {...register('quantity', { valueAsNumber: true })}
-              onChange={handleQuantityChange}
-              className="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-            {errors.quantity && (
-              <p className="text-red-500 text-[11px] mt-1">{errors.quantity.message as string}</p>
-            )}
+        {/* Customer Details (Optional) */}
+        <div className="p-3 bg-slate-50/80 rounded-xl border border-slate-200 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+              <User className="h-3 w-3 text-slate-400" /> Customer Details (Optional)
+            </span>
           </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Price per item (₹)</label>
-            <input
-              type="number"
-              step="0.01"
-              {...register('price_per_item', { valueAsNumber: true })}
-              onChange={handlePriceChange}
-              className="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            />
-            {errors.price_per_item && (
-              <p className="text-red-500 text-[11px] mt-1">{errors.price_per_item.message as string}</p>
-            )}
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <input
+                type="text"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Customer Name"
+                className="w-full text-xs px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+            </div>
+            <div>
+              <input
+                type="tel"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="Mobile (e.g. 9876543210)"
+                className="w-full text-xs px-3 py-1.5 bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              />
+            </div>
           </div>
         </div>
 
-        {/* Total Amount Received (Source of Truth!) */}
-        <div className="p-3 bg-emerald-50/60 border border-emerald-100 rounded-xl">
-          <label className="block text-xs font-bold text-emerald-900 mb-1">
-            Total Amount Received (₹) <span className="font-normal text-[11px] text-emerald-700">— Source of Truth</span>
-          </label>
-          <input
-            type="number"
-            step="0.01"
-            {...register('total_amount', { valueAsNumber: true })}
-            className="w-full text-sm font-bold px-3 py-2 bg-white border border-emerald-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 text-emerald-900"
-          />
-          <p className="text-[10px] text-emerald-600 mt-1">
-            Auto-suggested from quantity × price, but freely editable if customer paid a different amount.
-          </p>
-          {errors.total_amount && (
-            <p className="text-red-500 text-[11px] mt-1">{errors.total_amount.message as string}</p>
-          )}
-        </div>
-
-        {/* Payment Method and Received By */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Payment Method</label>
-            <select
-              {...register('payment_method')}
-              className="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              <option value="UPI">UPI</option>
-              <option value="Cash">Cash</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">Received By</label>
-            <select
-              {...register('received_by')}
-              className="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            >
-              {meta?.members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Notes */}
+        {/* Dynamic Order Items List */}
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1">
-            Notes {isOtherProduct && <span className="text-red-500">* (Required for "Other")</span>}
-          </label>
-          <textarea
-            rows={3}
-            placeholder={isOtherProduct ? 'Enter item details for this mixed order (required)' : 'Optional notes...'}
-            {...register('notes')}
-            className={`w-full text-xs px-3 py-2 bg-slate-50 border rounded-lg focus:bg-white focus:outline-none focus:ring-2 ${
-              isOtherProduct && (!notesValue || notesValue.trim().length < 3)
-                ? 'border-amber-300 focus:ring-amber-500'
-                : 'border-slate-200 focus:ring-emerald-500'
-            }`}
-          />
-          {errors.notes && (
-            <p className="text-red-500 text-[11px] mt-1">{errors.notes.message as string}</p>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+              <ShoppingBag className="h-3.5 w-3.5 text-emerald-600" />
+              Order Items ({items.length})
+            </label>
+            {!initialData && (
+              <button
+                type="button"
+                onClick={handleAddItem}
+                className="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg inline-flex items-center gap-1 transition-colors"
+              >
+                <Plus className="h-3 w-3" /> Add Item
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-2.5">
+            {items.map((it, idx) => {
+              const selectedProd = meta?.products.find((p) => p.id === it.product_id);
+              const isOther = selectedProd?.name.toLowerCase() === 'other';
+
+              return (
+                <div
+                  key={it.id || idx}
+                  className="p-3 bg-white border border-slate-200 rounded-xl shadow-xs space-y-2 w-full min-w-0 box-border overflow-hidden"
+                >
+                  <div className="flex items-center gap-2 w-full min-w-0">
+                    <span className="shrink-0 text-[11px] font-bold text-emerald-800 bg-emerald-100/80 px-2 py-0.5 rounded">
+                      #{idx + 1}
+                    </span>
+
+                    <div className="flex-1 min-w-0">
+                      <select
+                        value={it.product_id}
+                        onChange={(e) => handleProductChange(idx, e.target.value)}
+                        className="w-full min-w-0 text-xs px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-emerald-500 font-semibold truncate block"
+                        required
+                      >
+                        <option value="">Select Product</option>
+                        {meta?.products.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name} {p.default_price > 0 ? `(₹${p.default_price})` : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {items.length > 1 && !initialData && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveItem(idx)}
+                        className="shrink-0 text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition-colors border border-transparent hover:border-rose-200"
+                        title="Remove item"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Quantity & Unit Price & Subtotal */}
+                  <div className="grid grid-cols-3 gap-2 items-center bg-slate-50 p-2 rounded-lg border border-slate-100 text-xs w-full min-w-0">
+                    {/* Qty Stepper */}
+                    <div className="min-w-0">
+                      <span className="text-[10px] text-slate-500 font-medium block mb-0.5">Quantity</span>
+                      <div className="inline-flex items-center bg-white border border-slate-200 rounded-md overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => handleQuantityChange(idx, it.quantity - 1)}
+                          className="px-1.5 py-1 text-slate-500 hover:bg-slate-100"
+                        >
+                          <Minus className="h-3 w-3" />
+                        </button>
+                        <span className="px-1.5 py-0.5 font-bold text-center min-w-[18px]">
+                          {it.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleQuantityChange(idx, it.quantity + 1)}
+                          className="px-1.5 py-1 text-slate-500 hover:bg-slate-100"
+                        >
+                          <Plus className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Unit Price */}
+                    <div className="min-w-0">
+                      <span className="text-[10px] text-slate-500 font-medium block mb-0.5">Price (₹)</span>
+                      <input
+                        type="number"
+                        step="any"
+                        value={it.price_per_item}
+                        onChange={(e) => handlePriceChange(idx, parseFloat(e.target.value) || 0)}
+                        className="w-full min-w-0 text-xs px-2 py-1 bg-white border border-slate-200 rounded-md font-semibold"
+                      />
+                    </div>
+
+                    {/* Line Total */}
+                    <div className="text-right min-w-0">
+                      <span className="text-[10px] text-slate-500 font-medium block mb-0.5">Line Total</span>
+                      <span className="text-xs font-bold text-emerald-700 whitespace-nowrap">
+                        ₹{(it.total_amount || 0).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Line Notes (required if product is 'Other') */}
+                  {isOther && (
+                    <div>
+                      <input
+                        type="text"
+                        value={it.notes}
+                        onChange={(e) => handleItemNotesChange(idx, e.target.value)}
+                        placeholder="Description / Notes (Required for 'Other')"
+                        className="w-full text-xs px-2.5 py-1.5 bg-amber-50 border border-amber-300 rounded-md text-amber-900 placeholder-amber-400 focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        required
+                      />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {!initialData && (
+            <button
+              type="button"
+              onClick={handleAddItem}
+              className="w-full mt-2 py-2 text-xs font-bold text-emerald-700 bg-emerald-50/80 hover:bg-emerald-100 border border-dashed border-emerald-300 rounded-xl flex items-center justify-center gap-1.5 transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" /> ＋ Add Another Item to this Order
+            </button>
           )}
         </div>
 
-        {/* Quick Add Another Toggle */}
-        {!initialData && (
-          <div className="flex items-center gap-2 pt-1">
-            <input
-              type="checkbox"
-              id="addAnotherSale"
-              checked={addAnother}
-              onChange={(e) => setAddAnother(e.target.checked)}
-              className="h-4 w-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
-            />
-            <label htmlFor="addAnotherSale" className="text-xs text-slate-600 font-medium select-none">
-              Keep open to add another sale
-            </label>
-          </div>
-        )}
+        {/* General Order Notes */}
+        <div>
+          <label className="block text-xs font-semibold text-slate-700 mb-1">Order Notes (Optional)</label>
+          <input
+            type="text"
+            value={orderNotes}
+            onChange={(e) => setOrderNotes(e.target.value)}
+            placeholder="e.g. Less sugar, extra berries"
+            className="w-full text-xs px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+          />
+        </div>
 
-        {/* Action Buttons */}
-        <div className="pt-4 flex justify-end gap-2 border-t border-slate-100">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            Cancel
-          </button>
+        {/* Sticky Action Footer on Mobile */}
+        <div className="sticky bottom-0 bg-white/95 backdrop-blur-xs pt-3 pb-1 border-t border-slate-100 -mx-5 px-5 sm:-mx-6 sm:px-6 shadow-xs">
+          <div className="p-3 bg-slate-100/90 rounded-xl border border-slate-200 flex items-center justify-between mb-2.5">
+            <div>
+              <span className="text-xs text-slate-500 font-medium">Order Total</span>
+              <div className="text-xs font-bold text-slate-700">
+                {items.length} item{items.length > 1 ? 's' : ''} ({totalUnits} unit{totalUnits > 1 ? 's' : ''})
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="text-xs text-slate-500 font-medium">Grand Total</span>
+              <div className="text-lg font-black text-emerald-700">
+                ₹{grandTotal.toFixed(2)}
+              </div>
+            </div>
+          </div>
+
+          {!initialData && (
+            <div className="flex items-center gap-2 mb-2.5">
+              <input
+                type="checkbox"
+                id="addAnotherOrder"
+                checked={addAnother}
+                onChange={(e) => setAddAnother(e.target.checked)}
+                className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+              />
+              <label htmlFor="addAnotherOrder" className="text-xs text-slate-600 select-none cursor-pointer">
+                Add another order immediately after saving
+              </label>
+            </div>
+          )}
+
+          {/* Submit Button */}
           <button
             type="submit"
-            disabled={isSubmitting}
-            className="px-5 py-2 text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 rounded-lg shadow-sm transition-colors flex items-center gap-1.5 disabled:opacity-50"
+            disabled={isSubmitting || grandTotal <= 0}
+            className="w-full py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm rounded-xl shadow-md hover:shadow transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isSubmitting ? (
-              <>
-                <div className="h-3.5 w-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Saving...</span>
-              </>
+              'Saving Order...'
+            ) : initialData ? (
+              `Update Sale • ₹${grandTotal.toFixed(2)}`
             ) : (
-              <span>{initialData ? 'Update Sale' : 'Save Sale'}</span>
+              `Save Order (${items.length} item${items.length > 1 ? 's' : ''}) • ₹${grandTotal.toFixed(2)}`
             )}
           </button>
         </div>

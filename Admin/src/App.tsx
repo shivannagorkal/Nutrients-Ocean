@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Today from './pages/Today';
+import Orders from './pages/Orders';
 import Sales from './pages/Sales';
 import Expenses from './pages/Expenses';
 import Partners from './pages/Partners';
@@ -22,6 +23,7 @@ export default function App() {
           <Route element={<Layout />}>
             <Route path="/" element={<Navigate to="/today" replace />} />
             <Route path="/today" element={<Today />} />
+            <Route path="/orders" element={<Orders />} />
             <Route path="/sales" element={<Sales />} />
             <Route path="/expenses" element={<Expenses />} />
             <Route path="/partners" element={<Partners />} />
